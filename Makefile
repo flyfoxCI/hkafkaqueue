@@ -4,7 +4,7 @@ hash:=$(shell git rev-parse --short HEAD)
 
 HKafkaQueue :
 	mkdir -p build/
-	go build -o build/HKafkaQueue 
+	go build -o build/hkafkaqueue
 
 all:
 	make check
