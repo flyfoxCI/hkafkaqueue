@@ -5,6 +5,7 @@ import (
 	"github.com/grandecola/mmap"
 	"os"
 	"strings"
+	"syscall"
 )
 
 const INDEX_SUFFIX = ".idx"
