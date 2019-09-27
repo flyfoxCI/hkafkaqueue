@@ -30,7 +30,7 @@ func NewHQueueBlock(index HQueueIndex, blockFilePath string) *HQueueBlock {
 	mapFile, errMmap := mmap.NewSharedFileMmap(bf, 0, 0, PROT_PAGE)
 	defer mapFile.Unmap()
 	if errMmap != nil {
-		glog.Fatal("error in mapping :: %s", errMmap)
+		glog.Fatalf("error in mapping :: %s", errMmap)
 	}
 	hqueueBlock := &HQueueBlock{
 		blockFilePath: blockFilePath,
