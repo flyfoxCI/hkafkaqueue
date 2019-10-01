@@ -29,7 +29,7 @@ func TestHQueueBlockRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("write block faild %s", err)
 	}
-	bytes := blk.read()
+	bytes, err := blk.read()
 	assert.Equal(t, "helloworld", String(bytes))
 
 }
@@ -40,7 +40,7 @@ func TestBlockFull(t *testing.T) {
 		t.Fatalf("write block faild %s", err)
 	}
 	for {
-		if blk.isSpaceQvailable(10) {
+		if blk.isSpaceAvailable(10) {
 			blk.write([]byte("helloworld"))
 		} else {
 			blk.putEOF()
@@ -58,7 +58,7 @@ func TestBlockRead(t *testing.T) {
 	}
 	for {
 		if !blk.eof() {
-			bytes := blk.read()
+			bytes, _ := blk.read()
 			fmt.Println(String(bytes))
 			fmt.Println(blk.index.readCounter)
 			fmt.Println(blk.index.readPosition)

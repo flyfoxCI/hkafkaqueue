@@ -152,5 +152,5 @@ func (i *HQueueIndex) close() {
 }
 
 func formatHqueueIndexPath(dataDir string, queueName string) string {
-	return dataDir + string(os.PathSeparator) + queueName + INDEX_SUFFIX
+	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
 }

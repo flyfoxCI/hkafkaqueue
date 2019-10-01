@@ -2,6 +2,7 @@ package HKafkaQueue
 
 import (
 	"github.com/golang/glog"
+	"os"
 	"sync"
 	"sync/atomic"
 )
@@ -18,6 +19,7 @@ type HQueue struct {
 }
 
 func NewHQueue(queueName string, dataDir string) (*HQueue, error) {
+	checkQueueDir(dataDir, queueName)
 	indexPath := formatHqueueIndexPath(dataDir, queueName)
 	index := NewHQueueIndex(indexPath)
 	writeBlock, err := NewHQueueBlock(index, formatHqueueBlockPath(dataDir, queueName, index.writeBlockNum))
@@ -32,9 +34,22 @@ func NewHQueue(queueName string, dataDir string) (*HQueue, error) {
 	}
 	if index.readBlockNum == index.writeBlockNum {
 		hqueue.readBlock = writeBlock.duplicate()
+	} else {
+		readBlock, err := NewHQueueBlock(index, formatHqueueBlockPath(dataDir, queueName, index.readBlockNum))
+		if err != nil {
+			return nil, err
+		}
+		hqueue.readBlock = readBlock
 	}
-	atomic.StoreInt64(&hqueue.size, 0)
+	atomic.StoreInt64(&hqueue.size, int64(index.writeCounter-index.readCounter))
 	return hqueue, nil
+}
+
+func checkQueueDir(dataDir string, queueName string) {
+	fullQueuePath := dataDir + string(os.PathSeparator) + queueName
+	if !isExists(fullQueuePath) {
+		os.MkdirAll(fullQueuePath, 0711)
+	}
 }
 
 func (q *HQueue) getSize() int64 {
@@ -84,41 +99,39 @@ func (q *HQueue) rotateNextReadBlock() {
 	toClear(blockPath)
 }
 
-func (q *HQueue) offer(bytes []byte) {
+func (q *HQueue) offer(bytes []byte) (int, error) {
 	if len(bytes) == 0 {
-		return
+		return 0, nil
 	}
-	TryCatch{}.Try(func() {
-		q.writeLock.Lock()
-		if !q.writeBlock.isSpaceQvailable(uint64(len(bytes))) {
-			q.rotateNextWriteBlock()
-		}
-		q.writeBlock.write(bytes)
-		atomic.AddInt64(&q.size, 1)
-	}).CatchAll(func(err error) {
-		glog.Errorf("HQueue write bytes error %s", err.Error())
-	}).Finally(func() {
-		q.writeLock.Unlock()
-	})
+	q.writeLock.Lock()
+	if !q.writeBlock.isSpaceAvailable(uint64(len(bytes))) {
+		q.rotateNextWriteBlock()
+	}
+	writeLen, err := q.writeBlock.write(bytes)
+	if err != nil {
+		return 0, err
+	}
+	atomic.AddInt64(&q.size, 1)
+	q.writeLock.Unlock()
+	return writeLen, nil
 
 }
 
-func (q *HQueue) poll() []byte {
+func (q *HQueue) poll() ([]byte, error) {
 	q.readLock.Lock()
-	TryCatch{}.Try(func() {
-		if q.readBlock.eof() {
-			q.rotateNextReadBlock()
-		}
-		bytes, err := q.readBlock.read()
-		if bytes != nil {
-			atomic.AddInt64(&q.size, -1)
-		}
-	}).CatchAll(func(err error) {
+	if q.readBlock.eof() {
+		q.rotateNextReadBlock()
+	}
+	bytes, err := q.readBlock.read()
+	if err != nil {
 		glog.Errorf("HQueue write bytes error %s", err.Error())
-	}).Finally(func() {
-		q.readLock.Unlock()
-	})
-	return bytes
+		return nil, err
+	}
+	if bytes != nil {
+		atomic.AddInt64(&q.size, -1)
+	}
+	q.readLock.Unlock()
+	return bytes, nil
 }
 
 func (q *HQueue) sync() {

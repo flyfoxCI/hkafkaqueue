@@ -1,15 +1,17 @@
 package HKafkaQueue
 
 import (
+	"errors"
 	"github.com/golang/glog"
 	"github.com/grandecola/mmap"
 	"math"
 	"os"
+	"strconv"
 	"syscall"
 )
 
 const BLOCK_FILE_SUFFIX = ".blk"
-const BLOCK_SIZE = 1 * 1024 * 1024
+const BLOCK_SIZE = 1 * 1024
 const EOF = math.MaxUint64
 const PROT_PAGE = syscall.PROT_READ | syscall.PROT_WRITE
 
@@ -56,17 +58,23 @@ func (b *HQueueBlock) sync() {
 	}
 }
 
-func (b *HQueueBlock) isSpaceQvailable(len uint64) bool {
-	return BLOCK_SIZE-(b.index.writePosition+len+8) > 8
+func (b *HQueueBlock) isSpaceAvailable(len uint64) bool {
+	remain := uint64(BLOCK_SIZE) - b.index.writePosition
+	var flag bool = false
+	if remain > len+16 {
+		flag = true
+	}
+	return flag
 }
 
-func (b *HQueueBlock) write(bytes []byte) {
+func (b *HQueueBlock) write(bytes []byte) (int, error) {
 	currentWritePosition := b.index.writePosition
 	b.mapFile.WriteUint64At(uint64(len(bytes)), int64(currentWritePosition))
-	b.mapFile.WriteAt(bytes, int64(currentWritePosition+8))
+	writeLen, err := b.mapFile.WriteAt(bytes, int64(currentWritePosition+8))
 	b.index.writePosition = currentWritePosition + uint64(len(bytes)+8)
 	b.index.putWritePosition(currentWritePosition + uint64(len(bytes)+8))
 	b.index.putWriteCounter(b.index.writeCounter + 1)
+	return writeLen, err
 }
 
 func (b *HQueueBlock) eof() bool {
@@ -78,6 +86,9 @@ func (b *HQueueBlock) eof() bool {
 func (b *HQueueBlock) read() ([]byte, error) {
 	currentReadPosition := b.index.readPosition
 	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
+	if dataLen == 0 {
+		return nil, errors.New("the message in queue is 0")
+	}
 	data := make([]byte, dataLen)
 	_, err := b.mapFile.ReadAt(data, int64(currentReadPosition+8))
 	if err != nil {
@@ -85,7 +96,7 @@ func (b *HQueueBlock) read() ([]byte, error) {
 	}
 	b.index.putReadPosition(currentReadPosition + 8 + dataLen)
 	b.index.putReadCounter(b.index.readCounter + 1)
-	return data, err
+	return data, nil
 }
 
 func (b *HQueueBlock) close() {
@@ -108,5 +119,5 @@ func (b *HQueueBlock) duplicate() *HQueueBlock {
 }
 
 func formatHqueueBlockPath(dataDir string, queueName string, blockNum uint64) string {
-	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + string(blockNum) + BLOCK_FILE_SUFFIX
+	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + strconv.FormatUint(blockNum, 10) + BLOCK_FILE_SUFFIX
 }
