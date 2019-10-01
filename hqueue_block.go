@@ -1,86 +1,91 @@
 package HKafkaQueue
 
 import (
-	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/grandecola/mmap"
+	"math"
 	"os"
 	"syscall"
 )
 
 const BLOCK_FILE_SUFFIX = ".blk"
-const BLOCK_SIZE = 256 * 1024 * 1024
-const EOF = 0
+const BLOCK_SIZE = 1 * 1024 * 1024
+const EOF = math.MaxUint64
 const PROT_PAGE = syscall.PROT_READ | syscall.PROT_WRITE
 
 type HQueueBlock struct {
 	blockFilePath string
-	index         HQueueIndex
+	index         *HQueueIndex
 	blockFile     *os.File
-	mapFile       FileImpl
+	mapFile       mmap.File
 }
 
-func NewHQueueBlock(index HQueueIndex, blockFilePath string) *HQueueBlock {
+func NewHQueueBlock(index *HQueueIndex, blockFilePath string) (*HQueueBlock, error) {
 	bf, err := os.OpenFile(blockFilePath, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		glog.Errorf("create block file error %s", err)
-		return nil
+		return nil, err
 	}
-	defer bf.Close()
-	mapFile, errMmap := mmap.NewSharedFileMmap(bf, 0, 0, PROT_PAGE)
-	defer mapFile.Unmap()
+	fileInfo, _ := bf.Stat()
+	if fileInfo.Size() < 1 {
+		if _, err := bf.WriteAt([]byte{byte(0)}, BLOCK_SIZE-1); nil != err {
+			return nil, err
+		}
+	}
+	mapFile, errMmap := mmap.NewSharedFileMmap(bf, 0, BLOCK_SIZE, PROT_PAGE)
 	if errMmap != nil {
-		glog.Fatalf("error in mapping :: %s", errMmap)
+		return nil, errMmap
 	}
 	hqueueBlock := &HQueueBlock{
 		blockFilePath: blockFilePath,
 		index:         index,
 		blockFile:     bf,
-		mapFile:       FileImpl{mapFile},
+		mapFile:       mapFile,
 	}
-	return hqueueBlock
+	return hqueueBlock, nil
 }
 
 func (b *HQueueBlock) putEOF() {
-	b.mapFile.WriteUint64At(uint64(EOF), int64(b.index.writePosition))
+	b.mapFile.WriteUint64At(EOF, int64(b.index.writePosition))
+
 }
 
 func (b *HQueueBlock) sync() {
-	b.mapFile.Flush(syscall.MS_SYNC)
+	err := b.mapFile.Flush(syscall.MS_SYNC)
+	if err != nil {
+		glog.Errorf("sync map file:%s error:%s", b.blockFile.Name(), err)
+	}
 }
 
-func (b *HQueueBlock) duplicate() *HQueueBlock {
-	oj, _ := json.Marshal(b)
-	copy := new(HQueueBlock)
-	_ = json.Unmarshal(oj, copy)
-	return copy
-}
-
-func (b *HQueueBlock) isSpaceQvailable(len int) bool {
-	fileInfo, _ := os.Stat(b.blockFilePath)
-	flag := BLOCK_SIZE-fileInfo.Size()-8-int64(len) > 0
-	return flag
+func (b *HQueueBlock) isSpaceQvailable(len uint64) bool {
+	return BLOCK_SIZE-(b.index.writePosition+len+8) > 8
 }
 
 func (b *HQueueBlock) write(bytes []byte) {
 	currentWritePosition := b.index.writePosition
-	b.mapFile.WriteUint32(uint32(len(bytes)), int64(currentWritePosition))
-	b.mapFile.WriteAt(bytes, int64(currentWritePosition+4))
-	b.index.writePosition = uint32(len(bytes) + 4)
+	b.mapFile.WriteUint64At(uint64(len(bytes)), int64(currentWritePosition))
+	b.mapFile.WriteAt(bytes, int64(currentWritePosition+8))
+	b.index.writePosition = currentWritePosition + uint64(len(bytes)+8)
+	b.index.putWritePosition(currentWritePosition + uint64(len(bytes)+8))
+	b.index.putWriteCounter(b.index.writeCounter + 1)
 }
 
 func (b *HQueueBlock) eof() bool {
 	readPosition := b.index.readPosition
-	v, _ := b.mapFile.ReadInt(int64(readPosition))
-	return int64(v) == EOF
+	u := b.mapFile.ReadUint64At(int64(readPosition))
+	return u == EOF
 }
 
-func (b *HQueueBlock) read() []byte {
+func (b *HQueueBlock) read() ([]byte, error) {
 	currentReadPosition := b.index.readPosition
-	dataLen, _ := b.mapFile.ReadUint32(int64(currentReadPosition))
+	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
 	data := make([]byte, dataLen)
-	b.mapFile.ReadAt(data, int64(currentReadPosition+4))
-	return data
+	_, err := b.mapFile.ReadAt(data, int64(currentReadPosition+8))
+	if err != nil {
+		return nil, err
+	}
+	b.index.putReadPosition(currentReadPosition + 8 + dataLen)
+	b.index.putReadCounter(b.index.readCounter + 1)
+	return data, err
 }
 
 func (b *HQueueBlock) close() {
@@ -97,6 +102,11 @@ func (b *HQueueBlock) close() {
 
 }
 
-func formatHqueueBlockPath(dataDir string, queueName string, blockNum uint32) string {
+func (b *HQueueBlock) duplicate() *HQueueBlock {
+	newBlock := &b
+	return *newBlock
+}
+
+func formatHqueueBlockPath(dataDir string, queueName string, blockNum uint64) string {
 	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + string(blockNum) + BLOCK_FILE_SUFFIX
 }
