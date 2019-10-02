@@ -1,7 +1,6 @@
 package HKafkaQueue
 
 import (
-	"errors"
 	"github.com/golang/glog"
 	"github.com/grandecola/mmap"
 	"math"
@@ -11,7 +10,7 @@ import (
 )
 
 const BLOCK_FILE_SUFFIX = ".blk"
-const BLOCK_SIZE = 1 * 1024
+const BLOCK_SIZE = 1 * 1024 * 1024
 const EOF = math.MaxUint64
 const PROT_PAGE = syscall.PROT_READ | syscall.PROT_WRITE
 
@@ -87,7 +86,7 @@ func (b *HQueueBlock) read() ([]byte, error) {
 	currentReadPosition := b.index.readPosition
 	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
 	if dataLen == 0 {
-		return nil, errors.New("the message in queue is 0")
+		return nil, &ReadZeroError{}
 	}
 	data := make([]byte, dataLen)
 	_, err := b.mapFile.ReadAt(data, int64(currentReadPosition+8))
