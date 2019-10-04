@@ -18,16 +18,17 @@ type HQueuePool struct {
 var ringBuffer = queue.NewRingBuffer(64)
 
 func NewHQueuePool(dataDirPath string) *HQueuePool {
-	f, err := os.OpenFile(dataDirPath, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.Open(dataDirPath)
 	if err != nil {
 		glog.Fatalf("can not create directory %s", dataDirPath)
 	}
 	hqueuePool := &HQueuePool{
 		dataDirPath: dataDirPath,
 		dataDir:     f,
+		hqueueMap:   make(map[string]*HQueue),
 	}
 	hqueuePool.scanDir(dataDirPath)
-	hqueuePool.ticker = time.NewTicker(time.Second * 10)
+	hqueuePool.ticker = time.NewTicker(time.Second * 5)
 	go func() {
 		for _ = range hqueuePool.ticker.C {
 			for _, v := range hqueuePool.hqueueMap {
