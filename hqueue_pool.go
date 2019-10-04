@@ -1,11 +1,10 @@
 package HKafkaQueue
 
 import (
-	queue "github.com/Workiva/go-datastructures/queue"
+	"github.com/Workiva/go-datastructures/queue"
 	"github.com/golang/glog"
 	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -35,7 +34,6 @@ func NewHQueuePool(dataDirPath string) *HQueuePool {
 				v.sync()
 			}
 			deleteBlockFile()
-			//fmt.Printf("ticked at %v", time.Now())
 		}
 	}()
 	return hqueuePool
@@ -63,16 +61,13 @@ func (p *HQueuePool) scanDir(dirPath string) {
 		glog.Errorf("read dir %s fail", dirPath)
 	}
 	for _, fileInfo := range fileInfos {
-		var name = fileInfo.Name()
-		if strings.Contains(name, INDEX_SUFFIX) {
-			queueName := strings.Split(name, ".")[0]
-			queue, err := NewHQueue(queueName, dirPath)
-			if err != nil {
-				glog.Errorf("scan queue data dir error :%s", err)
-				continue
-			}
-			p.hqueueMap[queueName] = queue
+		var queueName = fileInfo.Name()
+		queue, err := NewHQueue(queueName, dirPath)
+		if err != nil {
+			glog.Errorf("create queue object %s cause error :%s in scan dir ", queueName, err.Error())
+			continue
 		}
+		p.hqueueMap[queueName] = queue
 	}
 }
 
@@ -89,7 +84,7 @@ func toClear(blockPath string) {
 
 func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {
-		v.writeBlock.close()
+		v.close()
 	}
 	p.ticker.Stop()
 	deleteBlockFile()

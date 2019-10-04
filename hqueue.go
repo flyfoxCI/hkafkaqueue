@@ -125,6 +125,7 @@ func (q *HQueue) poll() ([]byte, error) {
 	bytes, err := q.readBlock.read()
 	if err != nil {
 		glog.Errorf("HQueue read bytes error %s", err.Error())
+		q.readLock.Unlock()
 		return nil, err
 	}
 	if bytes != nil {
@@ -137,4 +138,9 @@ func (q *HQueue) poll() ([]byte, error) {
 func (q *HQueue) sync() {
 	q.writeBlock.sync()
 	q.index.sync()
+}
+
+func (q *HQueue) close() {
+	q.writeBlock.close()
+	q.index.close()
 }

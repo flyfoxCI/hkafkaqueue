@@ -10,8 +10,8 @@ import (
 )
 
 const BLOCK_FILE_SUFFIX = ".blk"
-const BLOCK_SIZE = 1 * 1024 * 1024
-const EOF = math.MaxUint64
+const BLOCK_SIZE = 256 * 1024 * 1024
+const EOF = math.MaxUint32
 const PROT_PAGE = syscall.PROT_READ | syscall.PROT_WRITE
 
 type HQueueBlock struct {
@@ -85,7 +85,7 @@ func (b *HQueueBlock) eof() bool {
 func (b *HQueueBlock) read() ([]byte, error) {
 	currentReadPosition := b.index.readPosition
 	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
-	if dataLen == 0 {
+	if dataLen <= 0 || dataLen == EOF {
 		return nil, &ReadZeroError{}
 	}
 	data := make([]byte, dataLen)
