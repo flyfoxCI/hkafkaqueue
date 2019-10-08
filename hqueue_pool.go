@@ -79,7 +79,7 @@ func (p *HQueuePool) destroy() {
 
 }
 
-func (p *HQueuePool) setQueueMap(queueName string, queue *HQueue) {
+func (p *HQueuePool) SetQueueMap(queueName string, queue *HQueue) {
 	p.hqueueMap[queueName] = queue
 }
 
@@ -87,7 +87,7 @@ func toClear(blockPath string) {
 	ringBuffer.Put(blockPath)
 }
 
-func (p *HQueuePool) disposal() {
+func (p *HQueuePool) Disposal() {
 	for _, v := range p.hqueueMap {
 		v.close()
 	}
