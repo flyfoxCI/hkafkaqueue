@@ -79,7 +79,7 @@ func (p *HQueuePool) destroy() {
 
 }
 
-func (p *HQueuePool) setHqueueMap(queueName string, queue *HQueue) {
+func (p *HQueuePool) setQueueMap(queueName string, queue *HQueue) {
 	p.hqueueMap[queueName] = queue
 }
 
