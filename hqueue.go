@@ -99,7 +99,7 @@ func (q *HQueue) rotateNextReadBlock() {
 	toClear(blockPath)
 }
 
-func (q *HQueue) offer(bytes []byte) (int, error) {
+func (q *HQueue) Offer(bytes []byte) (int, error) {
 	if len(bytes) == 0 {
 		return 0, nil
 	}
@@ -117,7 +117,7 @@ func (q *HQueue) offer(bytes []byte) (int, error) {
 
 }
 
-func (q *HQueue) poll() ([]byte, error) {
+func (q *HQueue) Poll() ([]byte, error) {
 	q.readLock.Lock()
 	if q.readBlock.eof() {
 		q.rotateNextReadBlock()
