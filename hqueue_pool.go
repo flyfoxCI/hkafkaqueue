@@ -20,7 +20,7 @@ var ringBuffer = queue.NewRingBuffer(64)
 func NewHQueuePool(dataDirPath string) *HQueuePool {
 	f, err := os.Open(dataDirPath)
 	if err != nil {
-		glog.Fatalf("can not create directory %s", dataDirPath)
+		glog.Fatalf("can not create directory: %s", dataDirPath)
 	}
 	hqueuePool := &HQueuePool{
 		dataDirPath: dataDirPath,
@@ -49,7 +49,7 @@ func deleteBlockFile() {
 			if path != "" {
 				err := os.Remove(path.(string))
 				if err != nil {
-					glog.Errorf("file can't not delete %s", path)
+					glog.Errorf("file can't not delete: %s", path)
 				}
 			}
 		}
@@ -59,13 +59,13 @@ func deleteBlockFile() {
 func (p *HQueuePool) scanDir(dirPath string) {
 	fileInfos, err := ioutil.ReadDir(dirPath)
 	if err != nil {
-		glog.Errorf("read dir %s fail", dirPath)
+		glog.Errorf("read dir: %s fail", dirPath)
 	}
 	for _, fileInfo := range fileInfos {
 		var queueName = fileInfo.Name()
 		queue, err := NewHQueue(queueName, dirPath)
 		if err != nil {
-			glog.Errorf("create queue object %s cause error :%s in scan dir ", queueName, err.Error())
+			glog.Errorf("create queue object: %s cause error: %s in scan dir ", queueName, err.Error())
 			continue
 		}
 		p.hqueueMap[queueName] = queue

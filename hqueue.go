@@ -90,7 +90,7 @@ func (q *HQueue) rotateNextReadBlock() {
 	} else {
 		block, err := NewHQueueBlock(q.index, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
 		if err != nil {
-			glog.Errorf("rotated next read block error:%s", err)
+			glog.Errorf("rotated next read block error: %s", err)
 		}
 		q.readBlock = block
 	}
@@ -124,7 +124,7 @@ func (q *HQueue) poll() ([]byte, error) {
 	}
 	bytes, err := q.readBlock.read()
 	if err != nil {
-		glog.Errorf("HQueue read bytes error %s", err.Error())
+		glog.Errorf("HQueue read bytes error: %s")
 		q.readLock.Unlock()
 		return nil, err
 	}

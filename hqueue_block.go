@@ -53,7 +53,7 @@ func (b *HQueueBlock) putEOF() {
 func (b *HQueueBlock) sync() {
 	err := b.mapFile.Flush(syscall.MS_SYNC)
 	if err != nil {
-		glog.Errorf("sync map file:%s error:%s", b.blockFile.Name(), err)
+		glog.Errorf("sync map file: %s error: %s", b.blockFile.Name(), err)
 	}
 }
 
@@ -107,7 +107,7 @@ func (b *HQueueBlock) close() {
 		b.blockFile.Close()
 		b.mapFile.Unmap()
 	}).CatchAll(func(err error) {
-		glog.Errorf("close block file err %s", err.Error())
+		glog.Errorf("close block file err: %s", err)
 	})
 
 }
