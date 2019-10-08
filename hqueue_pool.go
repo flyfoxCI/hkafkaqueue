@@ -72,7 +72,7 @@ func (p *HQueuePool) scanDir(dirPath string) {
 	}
 }
 
-func (p *HQueuePool) destroy() {
+func (p *HQueuePool) Destroy() {
 	if p != nil {
 		p.disposal()
 	}
@@ -87,7 +87,7 @@ func toClear(blockPath string) {
 	ringBuffer.Put(blockPath)
 }
 
-func (p *HQueuePool) Disposal() {
+func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {
 		v.close()
 	}
