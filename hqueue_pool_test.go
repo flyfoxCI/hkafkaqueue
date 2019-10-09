@@ -9,7 +9,7 @@ import (
 func TestCreatePool(t *testing.T) {
 	pool := NewHQueuePool("/tmp/hqueue")
 	fmt.Println(pool.hqueueMap)
-	pool.destroy()
+	pool.Destroy()
 }
 
 func TestPoolDelete(t *testing.T) {
@@ -21,5 +21,5 @@ func TestPoolDelete(t *testing.T) {
 	go read(hqueue, &w)
 	go write(hqueue, &w)
 	w.Wait()
-	pool.destroy()
+	pool.Destroy()
 }
