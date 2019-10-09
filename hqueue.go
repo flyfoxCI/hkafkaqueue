@@ -124,7 +124,6 @@ func (q *HQueue) Poll() ([]byte, error) {
 	}
 	bytes, err := q.readBlock.read()
 	if err != nil {
-		glog.Errorf("HQueue read bytes error: %s", err)
 		q.readLock.Unlock()
 		return nil, err
 	}
