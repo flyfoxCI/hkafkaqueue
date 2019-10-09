@@ -10,7 +10,7 @@ import (
 )
 
 const BLOCK_FILE_SUFFIX = ".blk"
-const BLOCK_SIZE = 256 * 1024 * 1024
+const BLOCK_SIZE = 32 * 1024 * 1024
 const EOF = math.MaxUint32
 const PROT_PAGE = syscall.PROT_READ | syscall.PROT_WRITE
 
