@@ -141,3 +141,8 @@ func (q *HQueue) Close() {
 	q.writeBlock.close()
 	q.index.close()
 }
+
+func (q *HQueue) SetReadIndex(readBlockNum uint64, readPosition uint64) {
+	q.index.readBlockNum = readBlockNum
+	q.index.readPosition = readPosition
+}
