@@ -101,7 +101,7 @@ func write(hqueue *HQueue, w *sync.WaitGroup) {
 			continue
 		}
 		i = i + 1
-		if i%10000000 == 0 {
+		if i%100000000 == 0 {
 			//fmt.Printf("write msg count:%d",i)
 			//fmt.Println(hqueue)
 			//time.Sleep(time.Second*2)
@@ -134,7 +134,7 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 			i = i + 1
 			//fmt.Printf("read msg i:%d :%s\n",i,string(msg))
 		}
-		if i == 10000000 {
+		if i == 100000000 {
 			fmt.Println("break")
 			w.Done()
 			break

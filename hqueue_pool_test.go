@@ -7,13 +7,13 @@ import (
 )
 
 func TestCreatePool(t *testing.T) {
-	pool := NewHQueuePool("/tmp/hqueue")
+	pool := NewHQueuePool("/tmp/hqueue", 60)
 	fmt.Println(pool.hqueueMap)
 	pool.destroy()
 }
 
 func TestPoolDelete(t *testing.T) {
-	pool := NewHQueuePool("/tmp/hqueue")
+	pool := NewHQueuePool("/tmp/hqueue", 120)
 	hqueue, _ := NewHQueue("test2", "/tmp/hqueue")
 	pool.hqueueMap["test2"] = hqueue
 	var w sync.WaitGroup

@@ -84,7 +84,6 @@ func (q *HQueue) rotateNextReadBlock() {
 	if nextReadBlockNum < 0 {
 		nextReadBlockNum = 0
 	}
-	blockPath := q.readBlock.blockFilePath
 	if nextReadBlockNum == q.index.writeBlockNum {
 		q.readBlock = q.writeBlock.duplicate()
 	} else {
@@ -96,7 +95,6 @@ func (q *HQueue) rotateNextReadBlock() {
 	}
 	q.index.putReadBlockNum(nextReadBlockNum)
 	q.index.putReadPosition(0)
-	toClear(blockPath)
 }
 
 func (q *HQueue) offer(bytes []byte) (int, error) {
