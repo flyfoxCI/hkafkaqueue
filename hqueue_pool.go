@@ -53,7 +53,6 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 	return hqueuePool
 }
 
-
 func (p *HQueuePool) scanDir(dirPath string) {
 	fileInfos, err := ioutil.ReadDir(dirPath)
 	if err != nil {
@@ -80,7 +79,6 @@ func (p *HQueuePool) Destroy() {
 func (p *HQueuePool) SetQueueMap(queueName string, queue *HQueue) {
 	p.hqueueMap[queueName] = queue
 }
-
 
 func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {
@@ -130,7 +128,7 @@ func deleteBlockFile() {
 			if path != "" {
 				err := os.Remove(path.(string))
 				if err != nil {
-					glog.Errorf("file can't not delete %s", path)
+					glog.Errorf("file can't not delete: %s", path)
 				}
 			}
 		}
@@ -140,6 +138,6 @@ func deleteBlockFile() {
 func toClear(blockPath string) {
 	err := ringBuffer.Put(blockPath)
 	if err != nil {
-		glog.Errorf("put delete file to ringbuffer error%s", blockPath)
+		glog.Errorf("put delete file to ringbuffer error: %s", blockPath)
 	}
 }
