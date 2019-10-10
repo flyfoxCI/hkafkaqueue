@@ -132,12 +132,12 @@ func (q *HQueue) Poll() ([]byte, error) {
 	return bytes, nil
 }
 
-func (q *HQueue) sync() {
+func (q *HQueue) Sync() {
 	q.writeBlock.sync()
 	q.index.sync()
 }
 
-func (q *HQueue) close() {
+func (q *HQueue) Close() {
 	q.writeBlock.close()
 	q.index.close()
 }

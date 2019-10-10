@@ -38,7 +38,7 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 	go func() {
 		for _ = range hqueuePool.syncTicker.C {
 			for _, v := range hqueuePool.hqueueMap {
-				v.sync()
+				v.Sync()
 			}
 		}
 	}()
@@ -82,7 +82,7 @@ func (p *HQueuePool) SetQueueMap(queueName string, queue *HQueue) {
 
 func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {
-		v.close()
+		v.Close()
 	}
 	p.syncTicker.Stop()
 	p.deleteTicker.Stop()
