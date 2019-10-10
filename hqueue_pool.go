@@ -42,7 +42,7 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 			}
 		}
 	}()
-	hqueuePool.deleteTicker = time.NewTicker(time.Second * 5)
+	hqueuePool.deleteTicker = time.NewTicker(time.Minute * 2)
 	go func() {
 		for _ = range hqueuePool.deleteTicker.C {
 			hqueuePool.scanExpiredBlocks()
