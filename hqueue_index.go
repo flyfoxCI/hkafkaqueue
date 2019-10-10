@@ -35,7 +35,7 @@ func NewHQueueIndex(indexFilePath string) *HQueueIndex {
 	if !isExists(indexFilePath) {
 		_, err := os.Create(indexFilePath)
 		if err != nil {
-			glog.Errorf("create file eorr %s", err)
+			glog.Errorf("create file eorr: %s", err)
 			return nil
 		}
 	}
@@ -48,7 +48,7 @@ func NewHQueueIndex(indexFilePath string) *HQueueIndex {
 	if fileInfo.Size() > 0 {
 		indexMapFile, errMmap := mmap.NewSharedFileMmap(f, 0, INDEX_SIZE, PROT_PAGE)
 		if errMmap != nil {
-			glog.Errorf("mmap file %s error:%s", indexFilePath, errMmap)
+			glog.Errorf("mmap file %s error: %s", indexFilePath, errMmap)
 		}
 		sb := &strings.Builder{}
 		sb.Grow(8)
@@ -71,11 +71,11 @@ func NewHQueueIndex(indexFilePath string) *HQueueIndex {
 		i.writeCounter = writeCounter
 	} else {
 		if _, err := f.WriteAt([]byte{byte(0)}, INDEX_SIZE-1); nil != err {
-			glog.Errorf("expand empty file error %s", err)
+			glog.Errorf("expand empty file error: %s", err)
 		}
 		indexMapFile, errMmap := mmap.NewSharedFileMmap(f, 0, INDEX_SIZE, PROT_PAGE)
 		if errMmap != nil {
-			glog.Errorf("mmap file %s error:%s", indexFilePath, errMmap)
+			glog.Errorf("mmap file: %s error: %s", indexFilePath, errMmap)
 		}
 		i.mapFile = indexMapFile
 		i.indexFile = f

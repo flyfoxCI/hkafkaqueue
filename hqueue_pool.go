@@ -25,7 +25,7 @@ var ringBuffer = queue.NewRingBuffer(64)
 func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 	f, err := os.Open(dataDirPath)
 	if err != nil {
-		glog.Fatalf("can not create directory %s", dataDirPath)
+		glog.Fatalf("can not create directory: %s", dataDirPath)
 	}
 	hqueuePool := &HQueuePool{
 		dataDirPath:   dataDirPath,
@@ -53,28 +53,34 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 	return hqueuePool
 }
 
+
 func (p *HQueuePool) scanDir(dirPath string) {
 	fileInfos, err := ioutil.ReadDir(dirPath)
 	if err != nil {
-		glog.Errorf("read dir %s fail", dirPath)
+		glog.Errorf("read dir: %s fail", dirPath)
 	}
 	for _, fileInfo := range fileInfos {
 		var queueName = fileInfo.Name()
 		queue, err := NewHQueue(queueName, dirPath)
 		if err != nil {
-			glog.Errorf("create queue object %s cause error :%s in scan dir ", queueName, err.Error())
+			glog.Errorf("create queue object: %s cause error: %s in scan dir ", queueName, err.Error())
 			continue
 		}
 		p.hqueueMap[queueName] = queue
 	}
 }
 
-func (p *HQueuePool) destroy() {
+func (p *HQueuePool) Destroy() {
 	if p != nil {
 		p.disposal()
 	}
 
 }
+
+func (p *HQueuePool) SetQueueMap(queueName string, queue *HQueue) {
+	p.hqueueMap[queueName] = queue
+}
+
 
 func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {

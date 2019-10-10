@@ -67,7 +67,7 @@ func (q *HQueue) rotateNextWriteBlock() {
 	}
 	block, err := NewHQueueBlock(q.index, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextWriteBlockNum))
 	if err != nil {
-		glog.Errorf("rotate next block failed,when create new block, error:%s", err)
+		glog.Errorf("rotate next block failed,when create new block, error: %s", err)
 		return
 	}
 	q.writeBlock = block
@@ -89,7 +89,7 @@ func (q *HQueue) rotateNextReadBlock() {
 	} else {
 		block, err := NewHQueueBlock(q.index, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
 		if err != nil {
-			glog.Errorf("rotated next read block error:%s", err)
+			glog.Errorf("rotated next read block error: %s", err)
 		}
 		q.readBlock = block
 	}
@@ -97,7 +97,7 @@ func (q *HQueue) rotateNextReadBlock() {
 	q.index.putReadPosition(0)
 }
 
-func (q *HQueue) offer(bytes []byte) (int, error) {
+func (q *HQueue) Offer(bytes []byte) (int, error) {
 	if len(bytes) == 0 {
 		return 0, nil
 	}
@@ -115,14 +115,13 @@ func (q *HQueue) offer(bytes []byte) (int, error) {
 
 }
 
-func (q *HQueue) poll() ([]byte, error) {
+func (q *HQueue) Poll() ([]byte, error) {
 	q.readLock.Lock()
 	if q.readBlock.eof() {
 		q.rotateNextReadBlock()
 	}
 	bytes, err := q.readBlock.read()
 	if err != nil {
-		glog.Errorf("HQueue read bytes error %s", err.Error())
 		q.readLock.Unlock()
 		return nil, err
 	}

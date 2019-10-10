@@ -28,7 +28,7 @@ func TestQueueWrite(t *testing.T) {
 		if hqueue.index.writeBlockNum > 3 {
 			break
 		}
-		_, err := hqueue.offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co."))
+		_, err := hqueue.Offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co."))
 		if err != nil {
 			t.Fatalf("write error :%v", err)
 			break
@@ -48,7 +48,7 @@ func TestQueueRead(t *testing.T) {
 		t.Fatalf("create hqueue error %v", err)
 	}
 	for {
-		bytes, err := hqueue.poll()
+		bytes, err := hqueue.Poll()
 		if err != nil {
 			break
 		} else {
@@ -95,7 +95,7 @@ func BenchmarkMultipleReadWrite(t *testing.B) {
 func write(hqueue *HQueue, w *sync.WaitGroup) {
 	var i = 0
 	for {
-		_, err := hqueue.offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co." +
+		_, err := hqueue.Offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co." +
 			"Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co."))
 		if err != nil {
 			continue
@@ -116,7 +116,7 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 	var i = 0
 	for {
 		//fmt.Println("read......")
-		b, err := hqueue.poll()
+		b, err := hqueue.Poll()
 		_ = b //release memory or will cause out of range
 		if err != nil {
 			if _, ok := err.(*ReadZeroError); ok {

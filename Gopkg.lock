@@ -34,22 +34,6 @@
   version = "v0.4.0"
 
 [[projects]]
-  digest = "1:09ca328575f38b80969ccf857f6d7302f2ce09d53778ea7aaba526cfd2cec739"
-  name = "github.com/mitchellh/copystructure"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9a1b6f44e8da0e0e374624fb0a825a231b00c537"
-  version = "v1.0.0"
-
-[[projects]]
-  digest = "1:2a7e6f8bebdca6bd8bc359c37f01ae1c4ea4f8481eaabf93b1ae4863f15b72c7"
-  name = "github.com/mitchellh/reflectwalk"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3e2c75dfad4fbf904b58782a80fd595c760ad185"
-  version = "v1.0.1"
-
-[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -80,7 +64,6 @@
     "github.com/Workiva/go-datastructures/queue",
     "github.com/golang/glog",
     "github.com/grandecola/mmap",
-    "github.com/mitchellh/copystructure",
     "github.com/stretchr/testify/assert",
   ]
   solver-name = "gps-cdcl"
