@@ -102,7 +102,7 @@ func (p *HQueuePool) scanExpiredBlocks() {
 			queueName := dirs[len(dirs)-2]
 			blockName := dirs[len(dirs)-1]
 			blockNumStr := strings.Split(blockName, ".")[0]
-			blockNum, err := strconv.ParseUint(blockNumStr, 10, 0)
+			blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
 			if err != nil {
 				glog.Errorf("parse blockNum error: %s", err)
 				return err
