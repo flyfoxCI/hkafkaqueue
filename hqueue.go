@@ -31,7 +31,7 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 		producerIndex: producerIndex,
 		writeBlock:    writeBlock,
 	}
-	if len(consumerName) >= 0 {
+	if len(consumerName) > 0 {
 		consumerIndexPath := formatHqueueConsumerIndexPath(dataDir, queueName, consumerName[0])
 		consumerIndex := NewHQueueIndex(consumerIndexPath)
 		hqueue.consumerIndex = consumerIndex

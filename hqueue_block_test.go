@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func setup() (*HQueueBlock, error) {
-	var indexPath = "/tmp/hkafkaqueue/test.idx"
+func setup(consumerName ...string) (*HQueueBlock, error) {
+	var indexPath = "/tmp/hkafkaqueue/consumer-p1.idx"
 	var blkPath = "/tmp/hkafkaqueue/test.blk"
 	hqueueIndex := NewHQueueIndex(indexPath)
 	blk, err := NewHQueueBlock(hqueueIndex, blkPath)
@@ -17,7 +17,7 @@ func setup() (*HQueueBlock, error) {
 func TestHQueueBlockWrite(t *testing.T) {
 	blk, err := setup()
 	if err != nil {
-		t.Fatalf("write block faild %s", err)
+		t.Fatalf("write block faild: %s", err)
 	}
 	blk.write([]byte("helloworld"))
 	blk.index.close()
@@ -27,7 +27,7 @@ func TestHQueueBlockWrite(t *testing.T) {
 func TestHQueueBlockRead(t *testing.T) {
 	blk, err := setup()
 	if err != nil {
-		t.Fatalf("write block faild %s", err)
+		t.Fatalf("write block faild: %s", err)
 	}
 	bytes, err := blk.read()
 	assert.Equal(t, "helloworld", String(bytes))
@@ -37,7 +37,7 @@ func TestHQueueBlockRead(t *testing.T) {
 func TestBlockFull(t *testing.T) {
 	blk, err := setup()
 	if err != nil {
-		t.Fatalf("write block faild %s", err)
+		t.Fatalf("write block faild: %s", err)
 	}
 	for {
 		if blk.isSpaceAvailable(10) {
@@ -54,14 +54,14 @@ func TestBlockFull(t *testing.T) {
 func TestBlockRead(t *testing.T) {
 	blk, err := setup()
 	if err != nil {
-		t.Fatalf("write block faild %s", err)
+		t.Fatalf("write block faild: %s", err)
 	}
 	for {
 		if !blk.eof() {
 			bytes, _ := blk.read()
 			fmt.Println(String(bytes))
-			fmt.Println(blk.index.readCounter)
-			fmt.Println(blk.index.readPosition)
+			fmt.Println(blk.index.counter)
+			fmt.Println(blk.index.position)
 		} else {
 			break
 		}
@@ -74,7 +74,7 @@ func TestBlockRead(t *testing.T) {
 func TestDuplicate(t *testing.T) {
 	blk, err := setup()
 	if err != nil {
-		t.Fatalf("write block faild %s", err)
+		t.Fatalf("write block faild: %s", err)
 	}
 	n := blk.duplicate()
 	blk.blockFilePath = "/tmp/test2/txt"

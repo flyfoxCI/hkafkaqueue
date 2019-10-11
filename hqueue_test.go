@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 )
 
 var dataDir = "/tmp/hqueue"
@@ -25,7 +24,7 @@ func TestQueueWrite(t *testing.T) {
 		t.Fatalf("create hqueue error %v", err)
 	}
 	for {
-		if hqueue.index.writeBlockNum > 3 {
+		if hqueue.producerIndex.blockNum > 1 {
 			break
 		}
 		_, err := hqueue.Offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co."))
@@ -35,30 +34,30 @@ func TestQueueWrite(t *testing.T) {
 		}
 		i = i + 1
 	}
-	fmt.Println(hqueue.index.writeCounter)
+	fmt.Println(hqueue.producerIndex.counter)
 	fmt.Println(i)
-	hqueue.sync()
+	hqueue.Sync()
 
 }
 
 func TestQueueRead(t *testing.T) {
-	hqueue, err := NewHQueue(queueName, dataDir)
+	hqueue, err := NewHQueue(queueName, dataDir, "p1")
 	var i = 0
 	if err != nil {
-		t.Fatalf("create hqueue error %v", err)
+		t.Fatalf("create hqueue error: %v", err)
 	}
 	for {
-		bytes, err := hqueue.Poll()
+		_, err := hqueue.Poll()
 		if err != nil {
 			break
 		} else {
-			fmt.Println(String(bytes))
+			//fmt.Println(String(bytes))
 			i = i + 1
 		}
 	}
-	fmt.Println(hqueue.index.readCounter)
+	fmt.Println(hqueue.consumerIndex.counter)
 	fmt.Println(i)
-	hqueue.sync()
+	hqueue.Sync()
 }
 
 func BenchmarkWrite(t *testing.B) {
@@ -68,13 +67,11 @@ func BenchmarkWrite(t *testing.B) {
 	write(hqueue, &w)
 }
 
-func TestRead(t *testing.T) {
-	fmt.Println(time.Now())
-	hqueue, _ := NewHQueue(queueName, dataDir)
+func BenchmarkRead(t *testing.B) {
+	hqueue, _ := NewHQueue(queueName, dataDir, "p4")
 	var w sync.WaitGroup
 	w.Add(1)
 	read(hqueue, &w)
-	fmt.Println(time.Now())
 }
 
 func BenchmarkMultipleReadWrite(t *testing.B) {
@@ -85,9 +82,10 @@ func BenchmarkMultipleReadWrite(t *testing.B) {
 		}
 	}()
 	hqueue, _ := NewHQueue(queueName, dataDir)
+	hqueue2, _ := NewHQueue(queueName, dataDir, "p5")
 	var w sync.WaitGroup
 	w.Add(2)
-	go read(hqueue, &w)
+	go read(hqueue2, &w)
 	go write(hqueue, &w)
 	w.Wait()
 }
@@ -101,7 +99,7 @@ func write(hqueue *HQueue, w *sync.WaitGroup) {
 			continue
 		}
 		i = i + 1
-		if i%100000000 == 0 {
+		if i%100000 == 0 {
 			//fmt.Printf("write msg count:%d",i)
 			//fmt.Println(hqueue)
 			//time.Sleep(time.Second*2)
@@ -117,16 +115,16 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 	for {
 		//fmt.Println("read......")
 		b, err := hqueue.Poll()
-		_ = b //release memory or will cause out of range
+		//release memory or will cause out of range
 		if err != nil {
 			if _, ok := err.(*ReadZeroError); ok {
 				//fmt.Println("read Zero")
 				//time.Sleep(time.Second)
-				if hqueue.index.readCounter != 0 {
-					fmt.Println(hqueue.index.readCounter)
-					fmt.Println(i)
-				}
-				time.Sleep(time.Second)
+				//if hqueue.consumerIndex.counter != 0 {
+				//	fmt.Println(hqueue.consumerIndex.counter)
+				//	fmt.Println(i)
+				//}
+				//time.Sleep(time.Second)
 			} else {
 				fmt.Errorf("%s", err)
 			}
@@ -134,11 +132,12 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 			i = i + 1
 			//fmt.Printf("read msg i:%d :%s\n",i,string(msg))
 		}
-		if i == 100000000 {
+		if i == 100000 {
 			fmt.Println("break")
 			w.Done()
 			break
 		}
+		_ = b
 
 	}
 
