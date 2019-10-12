@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 )
 
-var dataDir = "/tmp/hqueue"
+var dataDir = "/tmp/kqueue"
 var queueName = "test"
 
 func TestNewHQueue(t *testing.T) {
@@ -41,7 +42,7 @@ func TestQueueWrite(t *testing.T) {
 }
 
 func TestQueueRead(t *testing.T) {
-	hqueue, err := NewHQueue(queueName, dataDir, "p1")
+	hqueue, err := NewHQueue(queueName, dataDir, "p2")
 	var i = 0
 	if err != nil {
 		t.Fatalf("create hqueue error: %v", err)
@@ -60,18 +61,53 @@ func TestQueueRead(t *testing.T) {
 	hqueue.Sync()
 }
 
-func BenchmarkWrite(t *testing.B) {
+func TestWrite(t *testing.T) {
 	hqueue, _ := NewHQueue(queueName, dataDir)
 	var w sync.WaitGroup
 	w.Add(1)
+	ticker := time.NewTicker(time.Second)
+	go func() {
+		for {
+			<-ticker.C
+			hqueue.Sync()
+		}
+	}()
 	write(hqueue, &w)
 }
 
-func BenchmarkRead(t *testing.B) {
-	hqueue, _ := NewHQueue(queueName, dataDir, "p4")
+func TestRead(t *testing.T) {
+	hqueue, _ := NewHQueue(queueName, dataDir, "p3")
 	var w sync.WaitGroup
 	w.Add(1)
+	//watcher, err := fsnotify.NewWatcher()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//defer watcher.Close()
+	//done := make(chan bool)
+	//go func() {
+	//	for {
+	//		select {
+	//		case event := <-watcher.Events:
+	//			log.Println("event:", event)
+	//			if event.Op&fsnotify.Write == fsnotify.Write {
+	//				log.Println("modified file:", event.Name)
+	//				hqueue.producerIndex.reload()
+	//			}
+	//
+	//		case err := <-watcher.Errors:
+	//			log.Println("error:", err)
+	//		}
+	//	}
+	//}()
+	//
+	//err = watcher.Add(hqueue.consumerIndex.indexFile.Name())
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 	read(hqueue, &w)
+	w.Wait()
+	//<-done
 }
 
 func BenchmarkMultipleReadWrite(t *testing.B) {
@@ -82,7 +118,7 @@ func BenchmarkMultipleReadWrite(t *testing.B) {
 		}
 	}()
 	hqueue, _ := NewHQueue(queueName, dataDir)
-	hqueue2, _ := NewHQueue(queueName, dataDir, "p5")
+	hqueue2, _ := NewHQueue(queueName, dataDir, "p1")
 	var w sync.WaitGroup
 	w.Add(2)
 	go read(hqueue2, &w)
@@ -99,10 +135,11 @@ func write(hqueue *HQueue, w *sync.WaitGroup) {
 			continue
 		}
 		i = i + 1
-		if i%100000 == 0 {
+		if i%10000 == 0 {
 			//fmt.Printf("write msg count:%d",i)
 			//fmt.Println(hqueue)
 			//time.Sleep(time.Second*2)
+			hqueue.Close()
 			w.Done()
 			break
 		}
@@ -114,7 +151,7 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 	var i = 0
 	for {
 		//fmt.Println("read......")
-		b, err := hqueue.Poll()
+		_, err := hqueue.Poll()
 		//release memory or will cause out of range
 		if err != nil {
 			if _, ok := err.(*ReadZeroError); ok {
@@ -126,18 +163,19 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 				//}
 				//time.Sleep(time.Second)
 			} else {
-				fmt.Errorf("%s", err)
+				fmt.Errorf("%s ", err)
 			}
 		} else {
 			i = i + 1
+			//fmt.Printf("%d",i)
 			//fmt.Printf("read msg i:%d :%s\n",i,string(msg))
 		}
-		if i == 100000 {
+		if i == 10000 {
 			fmt.Println("break")
+			hqueue.Close()
 			w.Done()
 			break
 		}
-		_ = b
 
 	}
 

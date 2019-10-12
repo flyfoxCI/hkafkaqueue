@@ -121,6 +121,30 @@ func formatHqueueConsumerIndexPath(dataDir string, queueName string, consumerNam
 	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + "consumer_" + consumerName + INDEX_SUFFIX
 }
 
+func (i *HQueueIndex) reload() {
+	err := i.mapFile.Unmap()
+	if err != nil {
+		glog.Errorf("unmap index file error: %s", err)
+	}
+	newMapFile, errMmap := mmap.NewSharedFileMmap(i.indexFile, 0, INDEX_SIZE, PROT_PAGE)
+	if errMmap != nil {
+		glog.Errorf("mmap file %s error: %s", i.indexFile.Name(), errMmap)
+	}
+	sb := &strings.Builder{}
+	sb.Grow(8)
+	newMapFile.ReadStringAt(sb, 0)
+	versionNo := sb.String()
+	blockNum := newMapFile.ReadUint64At(NUM_OFFSET)
+	position := newMapFile.ReadUint64At(POS_OFFSET)
+	counter := newMapFile.ReadUint64At(CNT_OFFSET)
+	i.mapFile = newMapFile
+	i.versionNo = versionNo
+	i.blockNum = blockNum
+	i.position = position
+	i.counter = counter
+
+}
+
 //func (i *HQueueIndex) reset() {
 //	remain := i.counter - i.readCounter
 //	i.putReadCounter(0)

@@ -1,6 +1,7 @@
 package HKafkaQueue
 
 import (
+	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
 	"os"
 	"sync"
@@ -35,16 +36,17 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 		consumerIndexPath := formatHqueueConsumerIndexPath(dataDir, queueName, consumerName[0])
 		consumerIndex := NewHQueueIndex(consumerIndexPath)
 		hqueue.consumerIndex = consumerIndex
-		if consumerIndex.blockNum == producerIndex.blockNum {
-			hqueue.readBlock = writeBlock.duplicate()
-		} else {
-			readBlock, err := NewHQueueBlock(consumerIndex, formatHqueueBlockPath(dataDir, queueName, consumerIndex.blockNum))
-			if err != nil {
-				return nil, err
-			}
-			hqueue.readBlock = readBlock
+		//if consumerIndex.blockNum == producerIndex.blockNum {
+		//	hqueue.readBlock = writeBlock.duplicate()
+		//} else {
+		readBlock, err := NewHQueueBlock(consumerIndex, formatHqueueBlockPath(dataDir, queueName, consumerIndex.blockNum))
+		if err != nil {
+			return nil, err
 		}
+		hqueue.readBlock = readBlock
+		//hqueue.addIndexMonitor()
 	}
+
 	return hqueue, nil
 }
 
@@ -81,15 +83,11 @@ func (q *HQueue) rotateNextReadBlock() {
 	if nextReadBlockNum < 0 {
 		nextReadBlockNum = 0
 	}
-	if nextReadBlockNum == q.producerIndex.blockNum {
-		q.readBlock = q.writeBlock.duplicate()
-	} else {
-		block, err := NewHQueueBlock(q.consumerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
-		if err != nil {
-			glog.Errorf("rotated next read block error: %s", err)
-		}
-		q.readBlock = block
+	block, err := NewHQueueBlock(q.consumerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
+	if err != nil {
+		glog.Errorf("rotated next read block error: %s", err)
 	}
+	q.readBlock = block
 	q.consumerIndex.putBlockNum(nextReadBlockNum)
 	q.consumerIndex.putPosition(0)
 }
@@ -143,4 +141,31 @@ func (q *HQueue) Close() {
 		q.consumerIndex.close()
 	}
 
+}
+
+func (q *HQueue) addIndexMonitor() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		glog.Fatal(err)
+	}
+	defer watcher.Close()
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					q.producerIndex.reload()
+				}
+
+			case err := <-watcher.Errors:
+				if err != nil {
+					glog.Errorf("watch the consumer index: %s error: %s", q.consumerIndex.indexFile.Name(), err)
+				}
+			}
+		}
+	}()
+	err = watcher.Add(q.producerIndex.indexFile.Name())
+	if err != nil {
+		glog.Fatalf("add monitor file error: %s", err)
+	}
 }
