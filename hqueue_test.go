@@ -25,7 +25,7 @@ func TestQueueWrite(t *testing.T) {
 		t.Fatalf("create hqueue error %v", err)
 	}
 	for {
-		if hqueue.index.writeBlockNum > 3 {
+		if hqueue.index.writeBlockNum > 100 {
 			break
 		}
 		_, err := hqueue.Offer([]byte("Bridgewater Associates AQR Capital Management Millennium Management Citadel Soros Fund Management Winton Capital Management D.E. Shaw& Co. enaissance Technologies LLC Two Sigma Paulson & Co."))
@@ -37,7 +37,7 @@ func TestQueueWrite(t *testing.T) {
 	}
 	fmt.Println(hqueue.index.writeCounter)
 	fmt.Println(i)
-	hqueue.sync()
+	hqueue.Sync()
 
 }
 
@@ -48,17 +48,17 @@ func TestQueueRead(t *testing.T) {
 		t.Fatalf("create hqueue error %v", err)
 	}
 	for {
-		bytes, err := hqueue.Poll()
+		_, err := hqueue.Poll()
 		if err != nil {
 			break
 		} else {
-			fmt.Println(String(bytes))
+			//fmt.Println(String(bytes))
 			i = i + 1
 		}
 	}
 	fmt.Println(hqueue.index.readCounter)
 	fmt.Println(i)
-	hqueue.sync()
+	hqueue.Sync()
 }
 
 func BenchmarkWrite(t *testing.B) {
