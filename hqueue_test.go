@@ -76,35 +76,16 @@ func TestWrite(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
+	defer func() {
+		fmt.Println("c")
+		if err := recover(); err != nil {
+			fmt.Println(err) // 这里的err其实就是panic传入的内容，55
+		}
+		fmt.Println("d")
+	}()
 	hqueue, _ := NewHQueue(queueName, dataDir, "p3")
 	var w sync.WaitGroup
 	w.Add(1)
-	//watcher, err := fsnotify.NewWatcher()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//defer watcher.Close()
-	//done := make(chan bool)
-	//go func() {
-	//	for {
-	//		select {
-	//		case event := <-watcher.Events:
-	//			log.Println("event:", event)
-	//			if event.Op&fsnotify.Write == fsnotify.Write {
-	//				log.Println("modified file:", event.Name)
-	//				hqueue.producerIndex.reload()
-	//			}
-	//
-	//		case err := <-watcher.Errors:
-	//			log.Println("error:", err)
-	//		}
-	//	}
-	//}()
-	//
-	//err = watcher.Add(hqueue.consumerIndex.indexFile.Name())
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 	read(hqueue, &w)
 	w.Wait()
 	//<-done
@@ -121,8 +102,8 @@ func BenchmarkMultipleReadWrite(t *testing.B) {
 	hqueue2, _ := NewHQueue(queueName, dataDir, "p1")
 	var w sync.WaitGroup
 	w.Add(2)
-	go read(hqueue2, &w)
-	go write(hqueue, &w)
+	write(hqueue, &w)
+	read(hqueue2, &w)
 	w.Wait()
 }
 
@@ -135,10 +116,12 @@ func write(hqueue *HQueue, w *sync.WaitGroup) {
 			continue
 		}
 		i = i + 1
-		if i%10000 == 0 {
+		if i%1000000 == 0 {
 			//fmt.Printf("write msg count:%d",i)
 			//fmt.Println(hqueue)
 			//time.Sleep(time.Second*2)
+			fmt.Println(hqueue.producerIndex.counter)
+			hqueue.Sync()
 			hqueue.Close()
 			w.Done()
 			break
@@ -170,7 +153,8 @@ func read(hqueue *HQueue, w *sync.WaitGroup) {
 			//fmt.Printf("%d",i)
 			//fmt.Printf("read msg i:%d :%s\n",i,string(msg))
 		}
-		if i == 10000 {
+		//fmt.Println(i)
+		if i == 1000000 {
 			fmt.Println("break")
 			hqueue.Close()
 			w.Done()

@@ -44,7 +44,7 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 			return nil, err
 		}
 		hqueue.readBlock = readBlock
-		//hqueue.addIndexMonitor()
+		hqueue.addIndexMonitor()
 	}
 
 	return hqueue, nil
@@ -145,6 +145,7 @@ func (q *HQueue) Close() {
 
 func (q *HQueue) addIndexMonitor() {
 	watcher, err := fsnotify.NewWatcher()
+	defer watcher.Close()
 	if err != nil {
 		glog.Fatal(err)
 	}
