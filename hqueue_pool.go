@@ -33,7 +33,7 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 		retentionTime: retentionTime,
 	}
 	hqueuePool.scanDir(dataDirPath)
-	hqueuePool.syncTicker = time.NewTicker(time.Second * 5)
+	hqueuePool.syncTicker = time.NewTicker(time.Second * 1)
 	go func() {
 		for _ = range hqueuePool.syncTicker.C {
 			for _, v := range hqueuePool.hqueueMap {

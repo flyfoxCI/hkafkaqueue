@@ -1,10 +1,10 @@
 package HKafkaQueue
 
 import (
-	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
 	"os"
 	"sync"
+	"time"
 )
 
 type HQueue struct {
@@ -16,23 +16,20 @@ type HQueue struct {
 	writeBlock    *HQueueBlock
 	readLock      sync.Mutex
 	writeLock     sync.Mutex
+	syncTicker    *time.Ticker
 }
 
 func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueue, error) {
-	checkQueueDir(dataDir, queueName)
+	checkDir(dataDir, queueName)
+	hqueue := &HQueue{
+		queueName:   queueName,
+		dataDirPath: dataDir,
+	}
 	producerIndexPath := formatHqueueProducerIndexPath(dataDir, queueName)
 	producerIndex := NewHQueueIndex(producerIndexPath)
-	writeBlock, err := NewHQueueBlock(producerIndex, formatHqueueBlockPath(dataDir, queueName, producerIndex.blockNum))
-	if err != nil {
-		return nil, err
-	}
-	hqueue := &HQueue{
-		queueName:     queueName,
-		dataDirPath:   dataDir,
-		producerIndex: producerIndex,
-		writeBlock:    writeBlock,
-	}
+	hqueue.producerIndex = producerIndex
 	if len(consumerName) > 0 {
+		checkDir(dataDir, consumerName[0])
 		consumerIndexPath := formatHqueueConsumerIndexPath(dataDir, queueName, consumerName[0])
 		consumerIndex := NewHQueueIndex(consumerIndexPath)
 		hqueue.consumerIndex = consumerIndex
@@ -44,13 +41,19 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 			return nil, err
 		}
 		hqueue.readBlock = readBlock
-		hqueue.addIndexMonitor()
+		hqueue.checkProduceIndex()
+	} else {
+		writeBlock, err := NewHQueueBlock(producerIndex, formatHqueueBlockPath(dataDir, queueName, producerIndex.blockNum))
+		if err != nil {
+			return nil, err
+		}
+		hqueue.writeBlock = writeBlock
 	}
 
 	return hqueue, nil
 }
 
-func checkQueueDir(dataDir string, queueName string) {
+func checkDir(dataDir string, queueName string) {
 	fullQueuePath := dataDir + string(os.PathSeparator) + queueName
 	if !isExists(fullQueuePath) {
 		os.MkdirAll(fullQueuePath, 0711)
@@ -124,49 +127,39 @@ func (q *HQueue) Poll() ([]byte, error) {
 }
 
 func (q *HQueue) Sync() {
-	q.writeBlock.sync()
-	q.producerIndex.sync()
+	if q.writeBlock != nil {
+		q.writeBlock.sync()
+		q.producerIndex.sync()
+	}
 	if q.consumerIndex != nil {
 		q.consumerIndex.sync()
 	}
 }
 
 func (q *HQueue) Close() {
-	q.writeBlock.close()
-	q.producerIndex.close()
 	if q.readBlock != nil {
 		q.readBlock.close()
 	}
 	if q.consumerIndex != nil {
 		q.consumerIndex.close()
 	}
+	if q.writeBlock != nil {
+		q.writeBlock.close()
+		q.producerIndex.close()
+	}
+	if q.syncTicker != nil {
+		q.syncTicker.Stop()
+	}
 
 }
 
-func (q *HQueue) addIndexMonitor() {
-	watcher, err := fsnotify.NewWatcher()
-	defer watcher.Close()
-	if err != nil {
-		glog.Fatal(err)
-	}
-	defer watcher.Close()
+func (q *HQueue) checkProduceIndex() {
+	ticker := time.NewTicker(time.Second / 2)
+	q.syncTicker = ticker
 	go func() {
 		for {
-			select {
-			case event := <-watcher.Events:
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					q.producerIndex.reload()
-				}
-
-			case err := <-watcher.Errors:
-				if err != nil {
-					glog.Errorf("watch the consumer index: %s error: %s", q.consumerIndex.indexFile.Name(), err)
-				}
-			}
+			<-q.syncTicker.C
+			q.producerIndex.reload()
 		}
 	}()
-	err = watcher.Add(q.producerIndex.indexFile.Name())
-	if err != nil {
-		glog.Fatalf("add monitor file error: %s", err)
-	}
 }

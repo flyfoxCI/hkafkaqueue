@@ -118,7 +118,7 @@ func formatHqueueProducerIndexPath(dataDir string, queueName string) string {
 }
 
 func formatHqueueConsumerIndexPath(dataDir string, queueName string, consumerName string) string {
-	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + "consumer_" + consumerName + INDEX_SUFFIX
+	return dataDir + string(os.PathSeparator) + consumerName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
 }
 
 func (i *HQueueIndex) reload() {
