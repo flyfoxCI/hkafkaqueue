@@ -16,7 +16,7 @@ func TestNewHQueue(t *testing.T) {
 	fmt.Println(hqueue)
 }
 
-func TestQueueWrite(t *testing.T) {
+func BenchmarkQueueWrite(t *testing.B) {
 	hqueue, err := NewHQueue(queueName, dataDir)
 	var i = 0
 	if err != nil {

@@ -16,7 +16,10 @@ func TestCreatePool(t *testing.T) {
 func TestPoolDelete(t *testing.T) {
 	pool := NewHQueuePool("/tmp/kqueue", 30)
 	hqueue, _ := NewHQueue("test2", "/tmp/kqueue")
-	hqueue2, _ := NewHQueue("test2", "/tmp/kqueue", "p1")
+	hqueue2, _ := NewHQueue("test2", "/tmp/kqueue", "p2")
+	hqueue2.consumerIndex.putBlockNum(5)
+	readBlock, _ := NewHQueueBlock(hqueue2.consumerIndex, formatHqueueBlockPath("/tmp/kqueue", "test2", hqueue2.consumerIndex.blockNum))
+	hqueue2.readBlock = readBlock
 	pool.hqueueMap["test2"] = hqueue
 	var w sync.WaitGroup
 	w.Add(2)
