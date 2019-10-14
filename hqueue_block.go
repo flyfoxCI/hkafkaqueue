@@ -104,10 +104,11 @@ func (b *HQueueBlock) close() {
 	}
 	TryCatch{}.Try(func() {
 		b.sync()
-		b.blockFile.Close()
-		b.mapFile.Unmap()
 	}).CatchAll(func(err error) {
 		glog.Errorf("close block file err: %s", err)
+	}).Finally(func() {
+		b.mapFile.Unmap()
+		b.blockFile.Close()
 	})
 
 }
@@ -117,6 +118,6 @@ func (b *HQueueBlock) duplicate() *HQueueBlock {
 	return *newBlock
 }
 
-func formatHqueueBlockPath(dataDir string, queueName string, blockNum uint64) string {
-	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + strconv.FormatUint(blockNum, 10) + BLOCK_FILE_SUFFIX
+func formatHqueueBlockPath(rootDir string, queueName string, blockNum uint64) string {
+	return getHqueueDataDir(rootDir) + string(os.PathSeparator) + queueName + string(os.PathSeparator) + strconv.FormatUint(blockNum, 10) + BLOCK_FILE_SUFFIX
 }

@@ -107,18 +107,31 @@ func (i *HQueueIndex) close() {
 	if i.mapFile == nil {
 		return
 	}
-	i.sync()
-	i.indexFile.Sync()
-	i.mapFile.Unmap()
-	i.indexFile.Close()
+	TryCatch{}.Try(func() {
+		i.sync()
+	}).CatchAll(func(err error) {
+		glog.Errorf("close index file err: %s", err)
+	}).Finally(func() {
+		i.mapFile.Unmap()
+		i.indexFile.Close()
+	})
+
 }
 
-func formatHqueueProducerIndexPath(dataDir string, queueName string) string {
-	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
+func formatHqueueProducerIndexPath(rootDir string, queueName string) string {
+	return getHqueueDataDir(rootDir) + string(os.PathSeparator) + queueName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
 }
 
-func formatHqueueConsumerIndexPath(dataDir string, queueName string, consumerName string) string {
-	return dataDir + string(os.PathSeparator) + consumerName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
+func formatHqueueConsumerIndexPath(rootDir string, queueName string, consumerName string) string {
+	return getConsumerIndexDir(rootDir) + string(os.PathSeparator) + consumerName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
+}
+
+func getHqueueDataDir(rootDir string) string {
+	return rootDir + string(os.PathSeparator) + "data"
+}
+
+func getConsumerIndexDir(rootDir string) string {
+	return rootDir + string(os.PathSeparator) + "consumers"
 }
 
 func (i *HQueueIndex) reload() {
@@ -145,12 +158,8 @@ func (i *HQueueIndex) reload() {
 
 }
 
-//func (i *HQueueIndex) reset() {
-//	remain := i.counter - i.readCounter
-//	i.putReadCounter(0)
-//	i.putcounter(remain)
-//	if remain == 0 && i.readCounter == i.counter {
-//		i.putReadPosition(0)
-//		i.putcounter(0)
-//	}
-//}
+func (i *HQueueIndex) reset() {
+	i.putCounter(0)
+	i.putPosition(0)
+	i.putBlockNum(0)
+}

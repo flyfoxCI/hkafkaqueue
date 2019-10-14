@@ -20,7 +20,7 @@ type HQueue struct {
 }
 
 func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueue, error) {
-	checkDir(dataDir, queueName)
+	checkDir(getHqueueDataDir(dataDir) + string(os.PathSeparator) + queueName)
 	hqueue := &HQueue{
 		queueName:   queueName,
 		dataDirPath: dataDir,
@@ -29,7 +29,7 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 	producerIndex := NewHQueueIndex(producerIndexPath)
 	hqueue.producerIndex = producerIndex
 	if len(consumerName) > 0 {
-		checkDir(dataDir, consumerName[0])
+		checkDir(getConsumerIndexDir(dataDir) + string(os.PathSeparator) + consumerName[0])
 		consumerIndexPath := formatHqueueConsumerIndexPath(dataDir, queueName, consumerName[0])
 		consumerIndex := NewHQueueIndex(consumerIndexPath)
 		hqueue.consumerIndex = consumerIndex
@@ -53,10 +53,9 @@ func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueu
 	return hqueue, nil
 }
 
-func checkDir(dataDir string, queueName string) {
-	fullQueuePath := dataDir + string(os.PathSeparator) + queueName
-	if !isExists(fullQueuePath) {
-		os.MkdirAll(fullQueuePath, 0711)
+func checkDir(dataDir string) {
+	if !isExists(dataDir) {
+		os.MkdirAll(dataDir, 0711)
 	}
 }
 
@@ -162,4 +161,9 @@ func (q *HQueue) checkProduceIndex() {
 			q.producerIndex.reload()
 		}
 	}()
+}
+
+func (q *HQueue) SetConsumerIndex(blockNum uint64, position uint64) {
+	q.consumerIndex.putBlockNum(blockNum)
+	q.consumerIndex.putPosition(position)
 }

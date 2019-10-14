@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,34 +15,26 @@ type HQueuePool struct {
 	dataDirPath   string
 	dataDir       *os.File
 	hqueueMap     map[string]*HQueue
-	syncTicker    *time.Ticker
 	deleteTicker  *time.Ticker
 	retentionTime int64
 }
 
 var ringBuffer = queue.NewRingBuffer(64)
 
-func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
-	f, err := os.Open(dataDirPath)
-	if err != nil {
-		glog.Fatalf("can not create directory: %s", dataDirPath)
+func NewHQueuePool(rootDir string, retentionTime int64) *HQueuePool {
+	if !isExists(rootDir) {
+		err := os.MkdirAll(rootDir, 0711)
+		if err != nil {
+			glog.Fatalf("create dir :%s error: %s", rootDir, err)
+		}
 	}
 	hqueuePool := &HQueuePool{
-		dataDirPath:   dataDirPath,
-		dataDir:       f,
+		dataDirPath:   rootDir,
 		hqueueMap:     make(map[string]*HQueue),
 		retentionTime: retentionTime,
 	}
-	hqueuePool.scanDir(dataDirPath)
-	hqueuePool.syncTicker = time.NewTicker(time.Second * 1)
-	go func() {
-		for _ = range hqueuePool.syncTicker.C {
-			for _, v := range hqueuePool.hqueueMap {
-				v.Sync()
-			}
-		}
-	}()
-	hqueuePool.deleteTicker = time.NewTicker(time.Minute * 2)
+	hqueuePool.scanDir(rootDir)
+	hqueuePool.deleteTicker = time.NewTicker(time.Minute)
 	go func() {
 		for _ = range hqueuePool.deleteTicker.C {
 			hqueuePool.scanExpiredBlocks()
@@ -52,14 +45,21 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 	return hqueuePool
 }
 
-func (p *HQueuePool) scanDir(dirPath string) {
-	fileInfos, err := ioutil.ReadDir(dirPath)
+func (p *HQueuePool) scanDir(rootDir string) {
+	dataDir := getHqueueDataDir(rootDir)
+	if !isExists(dataDir) {
+		err := os.MkdirAll(dataDir, 0711)
+		if err != nil {
+			glog.Fatalf("create dir :%s error: %s", dataDir, err)
+		}
+	}
+	fileInfos, err := ioutil.ReadDir(dataDir)
 	if err != nil {
-		glog.Errorf("read dir: %s fail", dirPath)
+		glog.Errorf("read dir: %s fail", dataDir)
 	}
 	for _, fileInfo := range fileInfos {
 		var queueName = fileInfo.Name()
-		queue, err := NewHQueue(queueName, dirPath)
+		queue, err := NewHQueue(queueName, rootDir)
 		if err != nil {
 			glog.Errorf("create queue object: %s cause error: %s in scan dir ", queueName, err.Error())
 			continue
@@ -83,7 +83,6 @@ func (p *HQueuePool) disposal() {
 	for _, v := range p.hqueueMap {
 		v.Close()
 	}
-	p.syncTicker.Stop()
 	p.deleteTicker.Stop()
 	deleteBlockFile()
 }
@@ -97,17 +96,17 @@ func (p *HQueuePool) scanExpiredBlocks() {
 			return nil
 		}
 		if strings.Contains(path, BLOCK_FILE_SUFFIX) {
-			//dirs := strings.Split(path, string(os.PathSeparator))
-			//queueName := dirs[len(dirs)-2]
-			//blockName := dirs[len(dirs)-1]
-			//blockNumStr := strings.Split(blockName, ".")[0]
-			//blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
-			//if err != nil {
-			//	glog.Errorf("parse blockNum error: %s", err)
-			//	return err
-			//}
-			//currentReadBlockNum := p.hqueueMap[queueName].index.readBlockNum
-			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime {
+			dirs := strings.Split(path, string(os.PathSeparator))
+			queueName := dirs[len(dirs)-2]
+			blockName := dirs[len(dirs)-1]
+			blockNumStr := strings.Split(blockName, ".")[0]
+			blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
+			if err != nil {
+				glog.Errorf("parse blockNum error: %s", err)
+				return err
+			}
+			currentWriteBlockNum := p.hqueueMap[queueName].producerIndex.blockNum
+			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && currentWriteBlockNum != blockNum {
 				toClear(path)
 			}
 		}
