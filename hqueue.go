@@ -4,97 +4,95 @@ import (
 	"github.com/golang/glog"
 	"os"
 	"sync"
-	"sync/atomic"
+	"time"
 )
 
 type HQueue struct {
-	queueName   string
-	dataDirPath string
-	index       *HQueueIndex
-	readBlock   *HQueueBlock
-	writeBlock  *HQueueBlock
-	size        int64
-	readLock    sync.Mutex
-	writeLock   sync.Mutex
+	queueName     string
+	dataDirPath   string
+	producerIndex *HQueueIndex
+	consumerIndex *HQueueIndex
+	readBlock     *HQueueBlock
+	writeBlock    *HQueueBlock
+	readLock      sync.Mutex
+	writeLock     sync.Mutex
+	syncTicker    *time.Ticker
 }
 
-func NewHQueue(queueName string, dataDir string) (*HQueue, error) {
-	checkQueueDir(dataDir, queueName)
-	indexPath := formatHqueueIndexPath(dataDir, queueName)
-	index := NewHQueueIndex(indexPath)
-	writeBlock, err := NewHQueueBlock(index, formatHqueueBlockPath(dataDir, queueName, index.writeBlockNum))
-	if err != nil {
-		return nil, err
-	}
+func NewHQueue(queueName string, dataDir string, consumerName ...string) (*HQueue, error) {
+	checkDir(dataDir, queueName)
 	hqueue := &HQueue{
 		queueName:   queueName,
 		dataDirPath: dataDir,
-		index:       index,
-		writeBlock:  writeBlock,
 	}
-	if index.readBlockNum == index.writeBlockNum {
-		hqueue.readBlock = writeBlock.duplicate()
-	} else {
-		readBlock, err := NewHQueueBlock(index, formatHqueueBlockPath(dataDir, queueName, index.readBlockNum))
+	producerIndexPath := formatHqueueProducerIndexPath(dataDir, queueName)
+	producerIndex := NewHQueueIndex(producerIndexPath)
+	hqueue.producerIndex = producerIndex
+	if len(consumerName) > 0 {
+		checkDir(dataDir, consumerName[0])
+		consumerIndexPath := formatHqueueConsumerIndexPath(dataDir, queueName, consumerName[0])
+		consumerIndex := NewHQueueIndex(consumerIndexPath)
+		hqueue.consumerIndex = consumerIndex
+		//if consumerIndex.blockNum == producerIndex.blockNum {
+		//	hqueue.readBlock = writeBlock.duplicate()
+		//} else {
+		readBlock, err := NewHQueueBlock(consumerIndex, formatHqueueBlockPath(dataDir, queueName, consumerIndex.blockNum))
 		if err != nil {
 			return nil, err
 		}
 		hqueue.readBlock = readBlock
+		hqueue.checkProduceIndex()
+	} else {
+		writeBlock, err := NewHQueueBlock(producerIndex, formatHqueueBlockPath(dataDir, queueName, producerIndex.blockNum))
+		if err != nil {
+			return nil, err
+		}
+		hqueue.writeBlock = writeBlock
 	}
-	atomic.StoreInt64(&hqueue.size, int64(index.writeCounter-index.readCounter))
+
 	return hqueue, nil
 }
 
-func checkQueueDir(dataDir string, queueName string) {
+func checkDir(dataDir string, queueName string) {
 	fullQueuePath := dataDir + string(os.PathSeparator) + queueName
 	if !isExists(fullQueuePath) {
 		os.MkdirAll(fullQueuePath, 0711)
 	}
 }
 
-func (q *HQueue) getSize() int64 {
-	return q.size
-}
-
 func (q *HQueue) rotateNextWriteBlock() {
-	nextWriteBlockNum := q.index.writeBlockNum + 1
+	nextWriteBlockNum := q.producerIndex.blockNum + 1
 	if nextWriteBlockNum < 0 {
 		nextWriteBlockNum = 0
 	}
 	q.writeBlock.putEOF()
-	if q.index.readBlockNum == q.index.writeBlockNum {
-		q.writeBlock.sync()
-	}
-	block, err := NewHQueueBlock(q.index, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextWriteBlockNum))
+	q.writeBlock.sync()
+	block, err := NewHQueueBlock(q.producerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextWriteBlockNum))
 	if err != nil {
 		glog.Errorf("rotate next block failed,when create new block, error: %s", err)
 		return
 	}
 	q.writeBlock = block
-	q.index.putWriteBlockNum(nextWriteBlockNum)
-	q.index.putWritePosition(0)
+	q.producerIndex.putBlockNum(nextWriteBlockNum)
+	q.producerIndex.putPosition(0)
 
 }
 
 func (q *HQueue) rotateNextReadBlock() {
-	if q.index.readBlockNum == q.index.writeBlockNum {
+	if q.consumerIndex.blockNum == q.producerIndex.blockNum {
 		return
 	}
-	nextReadBlockNum := q.index.readBlockNum + 1
+	nextReadBlockNum := q.consumerIndex.blockNum + 1
 	if nextReadBlockNum < 0 {
 		nextReadBlockNum = 0
 	}
-	if nextReadBlockNum == q.index.writeBlockNum {
-		q.readBlock = q.writeBlock.duplicate()
-	} else {
-		block, err := NewHQueueBlock(q.index, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
-		if err != nil {
-			glog.Errorf("rotated next read block error: %s", err)
-		}
-		q.readBlock = block
+	block, err := NewHQueueBlock(q.consumerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextReadBlockNum))
+	if err != nil {
+		glog.Errorf("rotated next read block error: %s", err)
 	}
-	q.index.putReadBlockNum(nextReadBlockNum)
-	q.index.putReadPosition(0)
+	q.readBlock = block
+	q.consumerIndex.putBlockNum(nextReadBlockNum)
+	q.consumerIndex.putPosition(0)
 }
 
 func (q *HQueue) Offer(bytes []byte) (int, error) {
@@ -109,7 +107,6 @@ func (q *HQueue) Offer(bytes []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	atomic.AddInt64(&q.size, 1)
 	q.writeLock.Unlock()
 	return writeLen, nil
 
@@ -125,24 +122,44 @@ func (q *HQueue) Poll() ([]byte, error) {
 		q.readLock.Unlock()
 		return nil, err
 	}
-	if bytes != nil {
-		atomic.AddInt64(&q.size, -1)
-	}
 	q.readLock.Unlock()
 	return bytes, nil
 }
 
 func (q *HQueue) Sync() {
-	q.writeBlock.sync()
-	q.index.sync()
+	if q.writeBlock != nil {
+		q.writeBlock.sync()
+		q.producerIndex.sync()
+	}
+	if q.consumerIndex != nil {
+		q.consumerIndex.sync()
+	}
 }
 
 func (q *HQueue) Close() {
-	q.writeBlock.close()
-	q.index.close()
+	if q.readBlock != nil {
+		q.readBlock.close()
+	}
+	if q.consumerIndex != nil {
+		q.consumerIndex.close()
+	}
+	if q.writeBlock != nil {
+		q.writeBlock.close()
+		q.producerIndex.close()
+	}
+	if q.syncTicker != nil {
+		q.syncTicker.Stop()
+	}
+
 }
 
-func (q *HQueue) SetReadIndex(readBlockNum uint64, readPosition uint64) {
-	q.index.readBlockNum = readBlockNum
-	q.index.readPosition = readPosition
+func (q *HQueue) checkProduceIndex() {
+	ticker := time.NewTicker(time.Second / 2)
+	q.syncTicker = ticker
+	go func() {
+		for {
+			<-q.syncTicker.C
+			q.producerIndex.reload()
+		}
+	}()
 }

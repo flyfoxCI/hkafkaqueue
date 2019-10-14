@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -34,7 +33,7 @@ func NewHQueuePool(dataDirPath string, retentionTime int64) *HQueuePool {
 		retentionTime: retentionTime,
 	}
 	hqueuePool.scanDir(dataDirPath)
-	hqueuePool.syncTicker = time.NewTicker(time.Second * 5)
+	hqueuePool.syncTicker = time.NewTicker(time.Second * 1)
 	go func() {
 		for _ = range hqueuePool.syncTicker.C {
 			for _, v := range hqueuePool.hqueueMap {
@@ -98,17 +97,17 @@ func (p *HQueuePool) scanExpiredBlocks() {
 			return nil
 		}
 		if strings.Contains(path, BLOCK_FILE_SUFFIX) {
-			dirs := strings.Split(path, string(os.PathSeparator))
-			queueName := dirs[len(dirs)-2]
-			blockName := dirs[len(dirs)-1]
-			blockNumStr := strings.Split(blockName, ".")[0]
-			blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
-			if err != nil {
-				glog.Errorf("parse blockNum error: %s", err)
-				return err
-			}
-			currentReadBlockNum := p.hqueueMap[queueName].index.readBlockNum
-			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && blockNum < currentReadBlockNum {
+			//dirs := strings.Split(path, string(os.PathSeparator))
+			//queueName := dirs[len(dirs)-2]
+			//blockName := dirs[len(dirs)-1]
+			//blockNumStr := strings.Split(blockName, ".")[0]
+			//blockNum, err := strconv.ParseUint(blockNumStr, 10, 64)
+			//if err != nil {
+			//	glog.Errorf("parse blockNum error: %s", err)
+			//	return err
+			//}
+			//currentReadBlockNum := p.hqueueMap[queueName].index.readBlockNum
+			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime {
 				toClear(path)
 			}
 		}

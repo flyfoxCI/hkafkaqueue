@@ -9,23 +9,17 @@ import (
 )
 
 const INDEX_SUFFIX = ".idx"
-const INDEX_SIZE = 1 << 6
-const READ_NUM_OFFSET = 8
-const READ_POS_OFFSET = 16
-const READ_CNT_OFFSET = 24
-const WRITE_NUM_OFFSET = 32
-const WRITE_POS_OFFSET = 40
-const WRITE_CNT_OFFSET = 48
+const INDEX_SIZE = 1 << 5
+const NUM_OFFSET = 8
+const POS_OFFSET = 16
+const CNT_OFFSET = 24
 const MAGIC = "v1.00000"
 
 type HQueueIndex struct {
-	versionNo     string
-	readBlockNum  uint64
-	readPosition  uint64
-	readCounter   uint64
-	writeBlockNum uint64
-	writePosition uint64
-	writeCounter  uint64
+	versionNo string
+	blockNum  uint64
+	position  uint64
+	counter   uint64
 
 	indexFile *os.File
 	mapFile   mmap.File
@@ -54,21 +48,15 @@ func NewHQueueIndex(indexFilePath string) *HQueueIndex {
 		sb.Grow(8)
 		indexMapFile.ReadStringAt(sb, 0)
 		versionNo := sb.String()
-		readBlockNum := indexMapFile.ReadUint64At(READ_NUM_OFFSET)
-		readPosition := indexMapFile.ReadUint64At(READ_POS_OFFSET)
-		readCounter := indexMapFile.ReadUint64At(READ_CNT_OFFSET)
-		writeBlockNum := indexMapFile.ReadUint64At(WRITE_NUM_OFFSET)
-		writePosition := indexMapFile.ReadUint64At(WRITE_POS_OFFSET)
-		writeCounter := indexMapFile.ReadUint64At(WRITE_CNT_OFFSET)
+		blockNum := indexMapFile.ReadUint64At(NUM_OFFSET)
+		position := indexMapFile.ReadUint64At(POS_OFFSET)
+		counter := indexMapFile.ReadUint64At(CNT_OFFSET)
 		i.mapFile = indexMapFile
 		i.indexFile = f
 		i.versionNo = versionNo
-		i.readBlockNum = readBlockNum
-		i.readPosition = readPosition
-		i.readCounter = readCounter
-		i.writeBlockNum = writeBlockNum
-		i.writePosition = writePosition
-		i.writeCounter = writeCounter
+		i.blockNum = blockNum
+		i.position = position
+		i.counter = counter
 	} else {
 		if _, err := f.WriteAt([]byte{byte(0)}, INDEX_SIZE-1); nil != err {
 			glog.Errorf("expand empty file error: %s", err)
@@ -80,41 +68,22 @@ func NewHQueueIndex(indexFilePath string) *HQueueIndex {
 		i.mapFile = indexMapFile
 		i.indexFile = f
 		i.putMagic()
-		i.putReadPosition(0)
-		i.putReadBlockNum(0)
-		i.putReadCounter(0)
-		i.putWriteBlockNum(0)
-		i.putWritePosition(0)
-		i.putWriteCounter(0)
+		i.putBlockNum(0)
+		i.putPosition(0)
+		i.putCounter(0)
 		i.sync()
 	}
 	return i
 }
 
-func (i *HQueueIndex) putWriteBlockNum(blockNum uint64) {
-	i.writeBlockNum = blockNum
-	i.mapFile.WriteUint64At(blockNum, WRITE_NUM_OFFSET)
+func (i *HQueueIndex) putBlockNum(blockNum uint64) {
+	i.blockNum = blockNum
+	i.mapFile.WriteUint64At(blockNum, NUM_OFFSET)
 }
 
-func (i *HQueueIndex) putWritePosition(position uint64) {
-	i.writePosition = position
-	i.mapFile.WriteUint64At(position, WRITE_POS_OFFSET)
-}
-
-func (i *HQueueIndex) putReadBlockNum(blockNum uint64) {
-	i.readBlockNum = blockNum
-	i.mapFile.WriteUint64At(blockNum, int64(READ_NUM_OFFSET))
-
-}
-
-func (i *HQueueIndex) putReadPosition(position uint64) {
-	i.readPosition = position
-	i.mapFile.WriteUint64At(position, READ_POS_OFFSET)
-}
-
-func (i *HQueueIndex) putReadCounter(c uint64) {
-	i.readCounter = c
-	i.mapFile.WriteUint64At(c, READ_CNT_OFFSET)
+func (i *HQueueIndex) putPosition(position uint64) {
+	i.position = position
+	i.mapFile.WriteUint64At(position, POS_OFFSET)
 }
 
 func (i *HQueueIndex) putMagic() {
@@ -122,23 +91,16 @@ func (i *HQueueIndex) putMagic() {
 	i.mapFile.WriteStringAt(MAGIC, 0)
 }
 
-func (i *HQueueIndex) putWriteCounter(c uint64) {
-	i.writeCounter = c
-	i.mapFile.WriteUint64At(c, WRITE_CNT_OFFSET)
-}
-
-func (i *HQueueIndex) reset() {
-	remain := i.writeCounter - i.readCounter
-	i.putReadCounter(0)
-	i.putWriteCounter(remain)
-	if remain == 0 && i.readCounter == i.writeCounter {
-		i.putReadPosition(0)
-		i.putWriteCounter(0)
-	}
+func (i *HQueueIndex) putCounter(c uint64) {
+	i.counter = c
+	i.mapFile.WriteUint64At(c, CNT_OFFSET)
 }
 
 func (i *HQueueIndex) sync() {
-	i.mapFile.Flush(syscall.MS_SYNC)
+	err := i.mapFile.Flush(syscall.MS_SYNC)
+	if err != nil {
+		glog.Errorf("producer index sync err :%s", err)
+	}
 }
 
 func (i *HQueueIndex) close() {
@@ -151,6 +113,44 @@ func (i *HQueueIndex) close() {
 	i.indexFile.Close()
 }
 
-func formatHqueueIndexPath(dataDir string, queueName string) string {
+func formatHqueueProducerIndexPath(dataDir string, queueName string) string {
 	return dataDir + string(os.PathSeparator) + queueName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
 }
+
+func formatHqueueConsumerIndexPath(dataDir string, queueName string, consumerName string) string {
+	return dataDir + string(os.PathSeparator) + consumerName + string(os.PathSeparator) + queueName + INDEX_SUFFIX
+}
+
+func (i *HQueueIndex) reload() {
+	err := i.mapFile.Unmap()
+	if err != nil {
+		glog.Errorf("unmap index file error: %s", err)
+	}
+	newMapFile, errMmap := mmap.NewSharedFileMmap(i.indexFile, 0, INDEX_SIZE, PROT_PAGE)
+	if errMmap != nil {
+		glog.Errorf("mmap file %s error: %s", i.indexFile.Name(), errMmap)
+	}
+	sb := &strings.Builder{}
+	sb.Grow(8)
+	newMapFile.ReadStringAt(sb, 0)
+	versionNo := sb.String()
+	blockNum := newMapFile.ReadUint64At(NUM_OFFSET)
+	position := newMapFile.ReadUint64At(POS_OFFSET)
+	counter := newMapFile.ReadUint64At(CNT_OFFSET)
+	i.mapFile = newMapFile
+	i.versionNo = versionNo
+	i.blockNum = blockNum
+	i.position = position
+	i.counter = counter
+
+}
+
+//func (i *HQueueIndex) reset() {
+//	remain := i.counter - i.readCounter
+//	i.putReadCounter(0)
+//	i.putcounter(remain)
+//	if remain == 0 && i.readCounter == i.counter {
+//		i.putReadPosition(0)
+//		i.putcounter(0)
+//	}
+//}

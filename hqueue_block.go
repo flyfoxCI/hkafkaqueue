@@ -46,7 +46,7 @@ func NewHQueueBlock(index *HQueueIndex, blockFilePath string) (*HQueueBlock, err
 }
 
 func (b *HQueueBlock) putEOF() {
-	b.mapFile.WriteUint64At(EOF, int64(b.index.writePosition))
+	b.mapFile.WriteUint64At(EOF, int64(b.index.position))
 
 }
 
@@ -58,7 +58,7 @@ func (b *HQueueBlock) sync() {
 }
 
 func (b *HQueueBlock) isSpaceAvailable(len uint64) bool {
-	remain := uint64(BLOCK_SIZE) - b.index.writePosition
+	remain := uint64(BLOCK_SIZE) - b.index.position
 	var flag bool = false
 	if remain > len+16 {
 		flag = true
@@ -67,25 +67,25 @@ func (b *HQueueBlock) isSpaceAvailable(len uint64) bool {
 }
 
 func (b *HQueueBlock) write(bytes []byte) (int, error) {
-	currentWritePosition := b.index.writePosition
+	currentWritePosition := b.index.position
 	b.mapFile.WriteUint64At(uint64(len(bytes)), int64(currentWritePosition))
 	writeLen, err := b.mapFile.WriteAt(bytes, int64(currentWritePosition+8))
-	b.index.writePosition = currentWritePosition + uint64(len(bytes)+8)
-	b.index.putWritePosition(currentWritePosition + uint64(len(bytes)+8))
-	b.index.putWriteCounter(b.index.writeCounter + 1)
+	b.index.position = currentWritePosition + uint64(len(bytes)+8)
+	b.index.putPosition(currentWritePosition + uint64(len(bytes)+8))
+	b.index.putCounter(b.index.counter + 1)
 	return writeLen, err
 }
 
 func (b *HQueueBlock) eof() bool {
-	readPosition := b.index.readPosition
+	readPosition := b.index.position
 	u := b.mapFile.ReadUint64At(int64(readPosition))
 	return u == EOF
 }
 
 func (b *HQueueBlock) read() ([]byte, error) {
-	currentReadPosition := b.index.readPosition
+	currentReadPosition := b.index.position
 	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
-	if dataLen <= 0 || dataLen == EOF {
+	if dataLen == 0 || dataLen == EOF {
 		return nil, &ReadZeroError{}
 	}
 	data := make([]byte, dataLen)
@@ -93,8 +93,8 @@ func (b *HQueueBlock) read() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.index.putReadPosition(currentReadPosition + 8 + dataLen)
-	b.index.putReadCounter(b.index.readCounter + 1)
+	b.index.putPosition(currentReadPosition + 8 + dataLen)
+	b.index.putCounter(b.index.counter + 1)
 	return data, nil
 }
 
