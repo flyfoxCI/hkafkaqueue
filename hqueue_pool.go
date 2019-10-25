@@ -135,6 +135,7 @@ func deleteBlockFile() {
 
 func toClear(blockPath string) {
 	err := ringBuffer.Put(blockPath)
+	glog.Infof("add: %s to delete queue", blockPath)
 	if err != nil {
 		glog.Errorf("put delete file to ringbuffer error: %s", blockPath)
 	}
