@@ -16,7 +16,7 @@ func TestNewHQueue(t *testing.T) {
 	fmt.Println(hqueue)
 }
 
-func BenchmarkQueueWrite(t *testing.B) {
+func TestQueueWrite(t *testing.T) {
 	hqueue, err := NewHQueue(queueName, dataDir)
 	var i = 0
 	if err != nil {
@@ -41,6 +41,7 @@ func BenchmarkQueueWrite(t *testing.B) {
 
 func TestQueueRead(t *testing.T) {
 	hqueue, err := NewHQueue(queueName, dataDir, "p4")
+	hqueue.ResetConsumerIndex(2, 0)
 	var i = 0
 	if err != nil {
 		t.Fatalf("create hqueue error: %v", err)
