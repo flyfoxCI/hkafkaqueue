@@ -164,7 +164,7 @@ func (q *HQueue) checkProduceIndex() {
 	}()
 }
 
-func (q *HQueue) ResetConsumerIdex(blockNum uint64, position uint64) {
+func (q *HQueue) ResetConsumerIndex(blockNum uint64, position uint64) {
 	q.consumerIndex.putBlockNum(blockNum)
 	q.consumerIndex.putPosition(position)
 	q.consumerIndex.putBlockNum(5)
