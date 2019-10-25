@@ -167,8 +167,7 @@ func (q *HQueue) checkProduceIndex() {
 func (q *HQueue) ResetConsumerIndex(blockNum uint64, position uint64) {
 	q.consumerIndex.putBlockNum(blockNum)
 	q.consumerIndex.putPosition(position)
-	q.consumerIndex.putBlockNum(5)
-	readBlock, _ := NewHQueueBlock(q.consumerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, q.consumerIndex.blockNum))
+	readBlock, _ := NewHQueueBlock(q.consumerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, blockNum))
 	q.readBlock = readBlock
 
 }
