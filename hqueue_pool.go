@@ -36,7 +36,8 @@ func NewHQueuePool(rootDir string, retentionTime int64) *HQueuePool {
 	hqueuePool.scanDir(rootDir)
 	hqueuePool.deleteTicker = time.NewTicker(time.Minute)
 	go func() {
-		for _ = range hqueuePool.deleteTicker.C {
+		for {
+			<-hqueuePool.deleteTicker.C
 			hqueuePool.scanExpiredBlocks()
 			deleteBlockFile()
 		}
