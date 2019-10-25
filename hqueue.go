@@ -65,7 +65,7 @@ func (q *HQueue) rotateNextWriteBlock() {
 		nextWriteBlockNum = 0
 	}
 	q.writeBlock.putEOF()
-	q.writeBlock.sync()
+	q.writeBlock.close()
 	block, err := NewHQueueBlock(q.producerIndex, formatHqueueBlockPath(q.dataDirPath, q.queueName, nextWriteBlockNum))
 	if err != nil {
 		glog.Errorf("rotate next block failed,when create new block, error: %s", err)
@@ -89,6 +89,7 @@ func (q *HQueue) rotateNextReadBlock() {
 	if err != nil {
 		glog.Errorf("rotated next read block error: %s", err)
 	}
+	q.readBlock.close()
 	q.readBlock = block
 	q.consumerIndex.putBlockNum(nextReadBlockNum)
 	q.consumerIndex.putPosition(0)
