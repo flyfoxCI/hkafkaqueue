@@ -41,7 +41,7 @@ func TestQueueWrite(t *testing.T) {
 
 func TestQueueRead(t *testing.T) {
 	hqueue, err := NewHQueue(queueName, dataDir, "p4")
-	hqueue.ResetConsumerIndex(2, 0)
+	//hqueue.ResetConsumerIndex(2, 0)
 	var i = 0
 	if err != nil {
 		t.Fatalf("create hqueue error: %v", err)

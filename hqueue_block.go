@@ -93,6 +93,9 @@ func (b *HQueueBlock) read() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if data[dataLen-1] == 0 {
+		return nil, &ReadDirtyError{}
+	}
 	b.index.putPosition(currentReadPosition + 8 + dataLen)
 	b.index.putCounter(b.index.counter + 1)
 	return data, nil
