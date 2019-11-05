@@ -1,5 +1,6 @@
 package HKafkaQueue
 
+import "C"
 import (
 	"github.com/golang/glog"
 	"os"
@@ -172,3 +173,5 @@ func (q *HQueue) ResetConsumerIndex(blockNum uint64, position uint64) {
 	q.readBlock = readBlock
 
 }
+
+func main() {}

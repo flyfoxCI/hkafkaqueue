@@ -18,14 +18,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
-  name = "github.com/fsnotify/fsnotify"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
-  version = "v1.4.7"
-
-[[projects]]
   branch = "master"
   digest = "1:1ba1d79f2810270045c328ae5d674321db34e3aae468eb4233883b473c5c0467"
   name = "github.com/golang/glog"
@@ -40,6 +32,14 @@
   pruneopts = "UT"
   revision = "5efcc3f07f2c7192793d0c2da87d2c2d9d4b730d"
   version = "v0.4.0"
+
+[[projects]]
+  digest = "1:a41a99747bcfcb60783e3dbadd8bf88b51f78520049239e30357de39afa3825b"
+  name = "github.com/panjf2000/ants"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e73db1d7d226408976ed89d514588a5fee7e87fa"
+  version = "v2.1.0"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
@@ -58,14 +58,6 @@
   version = "v1.4.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:7c927f17d868be652a4cfe7de23e4292dea5b14d974a1d536e3b7cb7e79fd695"
-  name = "golang.org/x/sys"
-  packages = ["unix"]
-  pruneopts = "UT"
-  revision = "b09406accb4736d857a32bf9444cd7edae2ffa79"
-
-[[projects]]
   digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -78,9 +70,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Workiva/go-datastructures/queue",
-    "github.com/fsnotify/fsnotify",
     "github.com/golang/glog",
     "github.com/grandecola/mmap",
+    "github.com/panjf2000/ants",
     "github.com/stretchr/testify/assert",
   ]
   solver-name = "gps-cdcl"

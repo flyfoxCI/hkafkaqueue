@@ -51,10 +51,14 @@ func (b *HQueueBlock) putEOF() {
 }
 
 func (b *HQueueBlock) sync() {
-	err := b.mapFile.Flush(syscall.MS_SYNC)
-	if err != nil {
+	TryCatch{}.Try(func() {
+		err := b.mapFile.Flush(syscall.MS_SYNC)
+		if err != nil {
+			panic(err)
+		}
+	}).CatchAll(func(err error) {
 		glog.Errorf("sync map file: %s error: %s", b.blockFile.Name(), err)
-	}
+	})
 }
 
 func (b *HQueueBlock) isSpaceAvailable(len uint64) bool {

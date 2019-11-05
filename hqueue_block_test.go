@@ -8,7 +8,7 @@ import (
 
 func setup(consumerName ...string) (*HQueueBlock, error) {
 	var indexPath = "/tmp/hkafkaqueue/consumer-p1.idx"
-	var blkPath = "/tmp/hkafkaqueue/test2.blk"
+	var blkPath = "/tmp/hkafkaqueue/test8.blk"
 	hqueueIndex := NewHQueueIndex(indexPath)
 	blk, err := NewHQueueBlock(hqueueIndex, blkPath)
 	return blk, err
@@ -19,7 +19,7 @@ func TestReadNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("write block faild: %s", err)
 	}
-	blk.write([]byte{byte(1), byte(0)})
+	blk.write([]byte("`!?$%^&*"))
 	blk.sync()
 	data := make([]byte, 100)
 	blk.mapFile.ReadAt(data, 0)
