@@ -89,10 +89,10 @@ func (b *HQueueBlock) eof() bool {
 func (b *HQueueBlock) read() ([]byte, error) {
 	currentReadPosition := b.index.position
 	dataLen := b.mapFile.ReadUint64At(int64(currentReadPosition))
-	if dataLen == 0 || dataLen == EOF {
+	if dataLen <= 0 || dataLen == EOF || dataLen >= math.MaxUint32 {
 		return nil, &ReadZeroError{}
 	}
-	data := make([]byte, dataLen)
+	data := make([]byte, dataLen, dataLen+10)
 	_, err := b.mapFile.ReadAt(data, int64(currentReadPosition+8))
 	if err != nil {
 		return nil, err
