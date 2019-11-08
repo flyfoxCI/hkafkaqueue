@@ -97,7 +97,7 @@ func (q *HQueue) rotateNextReadBlock() {
 }
 
 func (q *HQueue) Offer(bytes []byte) (int, error) {
-	if len(bytes) == 0 {
+	if len(bytes) <= 0 || len(bytes) >= BLOCK_SIZE {
 		return 0, nil
 	}
 	q.writeLock.Lock()
@@ -120,6 +120,9 @@ func (q *HQueue) Poll() ([]byte, error) {
 	}
 	bytes, err := q.readBlock.read()
 	if err != nil {
+		if _, ok := err.(*PutLengthError); ok {
+			q.rotateNextReadBlock()
+		}
 		q.readLock.Unlock()
 		return nil, err
 	}

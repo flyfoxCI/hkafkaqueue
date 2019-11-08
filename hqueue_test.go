@@ -7,7 +7,7 @@ import (
 	_ "github.com/panjf2000/ants"
 )
 
-var dataDir = "/tmp/kqueue"
+var dataDir = "/tmp/hqueue/"
 var queueName = "test"
 
 func TestNewHQueue(t *testing.T) {
@@ -85,4 +85,8 @@ func BenchmarkRead(t *testing.B) {
 			break
 		}
 	}
+}
+
+func TestIntoUint(t *testing.T) {
+
 }

@@ -107,8 +107,7 @@ func (p *HQueuePool) scanExpiredBlocks() {
 				return err
 			}
 			currentWriteBlockNum := p.hqueueMap[queueName].producerIndex.blockNum
-			currentReadBlockNum := p.hqueueMap[queueName].consumerIndex.blockNum
-			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && blockNum < currentReadBlockNum && currentWriteBlockNum != blockNum {
+			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && currentWriteBlockNum != blockNum {
 				toClear(path)
 			}
 		}
