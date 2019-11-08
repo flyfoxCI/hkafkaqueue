@@ -2,6 +2,7 @@ package HKafkaQueue
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	_ "github.com/panjf2000/ants"
@@ -88,5 +89,12 @@ func BenchmarkRead(t *testing.B) {
 }
 
 func TestIntoUint(t *testing.T) {
+	f, _ := os.OpenFile("/app/gopath/src/github.com/flyfoxCI/pv-hangout/7958.blk", os.O_RDWR, 0644)
+	//m, _ := mmap.NewSharedFileMmap(f, 0, INDEX_SIZE, PROT_PAGE)
+	f.Seek(15827061, 0)
+	b := make([]byte, 300000)
+	f.Read(b)
+	s := String(b)
+	fmt.Println(s)
 
 }
