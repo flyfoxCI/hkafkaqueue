@@ -43,7 +43,7 @@ func BenchmarkWrite(t *testing.B) {
 			t.Fatalf("write error :%v", err)
 		}
 		i = i + 1
-		if i == 1000000 {
+		if i == 10000 {
 			break
 		}
 	}
@@ -81,7 +81,7 @@ func BenchmarkRead(t *testing.B) {
 			//fmt.Println(String(bytes))
 			i = i + 1
 		}
-		if i == 1000000 {
+		if i == 10000 {
 			break
 		}
 	}
