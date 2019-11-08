@@ -106,8 +106,14 @@ func (p *HQueuePool) scanExpiredBlocks() {
 				glog.Errorf("parse blockNum error: %s", err)
 				return err
 			}
+			var smallerBlockNum uint64
 			currentWriteBlockNum := p.hqueueMap[queueName].producerIndex.blockNum
-			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && currentWriteBlockNum != blockNum {
+			if p.hqueueMap[queueName].consumerIndex != nil {
+				smallerBlockNum = p.hqueueMap[queueName].consumerIndex.blockNum
+			} else {
+				smallerBlockNum = currentWriteBlockNum
+			}
+			if time.Now().Unix()-f.ModTime().Unix() > p.retentionTime && blockNum < smallerBlockNum {
 				toClear(path)
 			}
 		}
