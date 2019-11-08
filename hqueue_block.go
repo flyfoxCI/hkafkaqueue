@@ -96,7 +96,7 @@ func (b *HQueueBlock) read() ([]byte, error) {
 		glog.Errorf(" put data length error :%d", dataLen)
 		return nil, &PutLengthError{}
 	}
-	data := make([]byte, dataLen, dataLen+10)
+	data := make([]byte, dataLen)
 	_, err := b.mapFile.ReadAt(data, int64(currentReadPosition+8))
 	if err != nil {
 		return nil, err
